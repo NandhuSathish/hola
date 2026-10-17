@@ -1,0 +1,122 @@
+/*
+ * Design tokens, copied from design/holla-mock.html.
+ * The mock is the visual source of truth — change it there first.
+ */
+:root {
+  /* surfaces */
+  --ink: #1b1446;
+  --ink-2: #2a2070;
+  --ink-3: #3a2d93;
+  --line: #0e0a2e;
+  --paper: #fff4dc;
+  --paper-2: #f1e0b8;
+
+  /* play colours — each one also gets a shape, for colour-blind players */
+  --red: #ff4d4d;
+  --sun: #ffc21a;
+  --mint: #22c97a;
+  --sky: #2f8bff;
+  --pink: #ff5fa8;
+
+  --shadow: 5px 5px 0 var(--line);
+
+  --fd: 'Lilita One', system-ui, sans-serif; /* display: headings, cards, buttons */
+  --fb: 'Nunito', system-ui, sans-serif; /* body, weights 700-900 */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background-color: var(--ink);
+  background-image: radial-gradient(rgba(255, 244, 220, 0.07) 1.4px, transparent 1.7px);
+  background-size: 24px 24px;
+  color: var(--paper);
+  font-family: var(--fb);
+  font-weight: 700;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sun);
+  outline-offset: 3px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--fd);
+  font-weight: 400;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+/* ---------- shared pieces ---------- */
+.sticker {
+  background: var(--paper);
+  color: var(--line);
+  border: 3px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  font: 400 20px/1 var(--fd);
+  letter-spacing: 0.4px;
+  color: var(--line);
+  background: var(--paper);
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  padding: 15px 22px;
+  box-shadow: 4px 4px 0 var(--line);
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+}
+
+.btn:disabled {
+  filter: saturate(0.25);
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+.btn:disabled:active {
+  transform: none;
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+.btn-pink {
+  background: var(--pink);
+}
+.btn-sun {
+  background: var(--sun);
+}
+.btn-mint {
+  background: var(--mint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
