@@ -119,8 +119,15 @@ Wild Draw 4 can be played any time (no challenge rule in v1).
 
 ### Ending a round and scoring
 - The round ends when a player plays their last card (the final card's effect still applies, e.g. the next player draws 2, for display only).
-- Winner scores the value of everyone else's cards: number cards = face value, Skip/Reverse/Draw 2 = 20, Wild/Wild Draw 4 = 50.
-- Running totals are kept on the room across rounds until the host returns to the lobby with "Reset scores".
+- Card values: number cards = face value, Skip/Reverse/Draw 2 = 20, Wild/Wild Draw 4 = 50.
+- **Winner takes all.** The winner scores the summed value of every other player's remaining cards. Everyone else scores **0** for the round.
+- In `RoundResult.scores`, `cardsLeft` and `points` are reported for every player: `points` is what that player *gained this round*, so it is the full total for the winner and `0` for everyone else. `cardsLeft` is their hand size, shown on the results screen.
+- Running totals are kept on the room across rounds until the host resets them (`game:next` with `mode: 'reset'`). Higher is better; there is no target score in v1.
+
+### Draw pile edge cases
+- If a pending stack total exceeds the cards available (draw pile + reshuffled discard), the player draws as many as exist and the stack is cleared. The round continues.
+- When the flipped start card is not a number card, it is inserted back at a **random position** in the draw pile (using the injected `rng`) and the next card is flipped. This keeps `setup` deterministic for a given seed.
+- Playing a 7 with `swapWith` set to your own id is an illegal move (`ok: false`).
 
 ### Players leaving mid-game
 - Disconnected players keep their seat for 60s; their turns are auto-passed (draw 1) while away.
@@ -134,23 +141,34 @@ Wild Draw 4 can be played any time (no challenge rule in v1).
 - **Room code:** 4 letters from `ABCDEFGHJKLMNPQRSTUVWXYZ` (no I, O). Case-insensitive input.
 - **Player identity:** server issues `{ playerId, secret }` on create/join. Client stores it in `localStorage` per room code.
 - **Rejoin:** on reconnect the client sends `room:rejoin` with the stored pair. Matching secret → same seat.
-- **Limits:** 15 players max. Names 1–14 chars, trimmed, unique within the room (append a digit if taken).
+- **Limits:** 15 players max. Names 1–14 chars, trimmed, unique within the room (append a digit if taken). The join/create ack returns only `{ code, playerId, secret }`; the client reads its final (possibly de-duplicated) name from the `room:state` that follows, matching on `playerId`.
+- **Avatars:** 16 options, so every seat at a full table is distinct — 🐯 🦊 🐼 🐸 🐙 🦄 🐨 🐵 🐺 🐷 🦁 🐮 🐔 🐧 🦉 🐝. Unique within a room where possible; the picker dims ones already taken.
 - **Host:** creator. If host disconnects for more than 60s or leaves, the longest-present player becomes host.
 - **Cleanup:** a room with no connected players is deleted after 10 minutes.
 
 ### Room shape (server)
+
+The core is game-agnostic (CLAUDE.md rule 4): `gameId` is a plain string looked up in the
+registry, and `settings` / `game` are opaque to the server. Only the module interprets them.
+
 ```ts
 type Room = {
   code: string;
   hostId: string;
-  players: { id: string; secret: string; name: string; avatar: string; connected: boolean; joinedAt: number; lastSeen: number }[];
+  players: {
+    id: string; secret: string; name: string; avatar: string;
+    connected: boolean; joinedAt: number; lastSeen: number;
+    spectator: boolean;            // true = watching only, seated next round
+  }[];
   phase: 'lobby' | 'playing' | 'results';
-  gameId: 'last-card';
-  settings: LastCardSettings;
+  gameId: string;                  // registry key, never a literal union
+  settings: unknown;               // the active module's Settings
   game: unknown | null;            // the active module's State
   totals: Record<string, number>;  // scores across rounds
 };
 ```
+
+- **Spectators:** a player removed mid-round (gone > 60s) comes back with `spectator: true`. They receive `getSpectatorView` instead of `getPlayerView`, cannot send `game:action`, and are cleared to `false` when the next round is dealt.
 
 ---
 
@@ -168,17 +186,25 @@ All payloads are typed in `shared/src/events.ts`. Client → server events use a
 | `room:settings` | `Partial<Settings>` (host only, lobby only) | `{ ok }` |
 | `game:start` | `{}` (host only, ≥ 2 players) | `{ ok }` |
 | `game:action` | game-specific `Action` | `{ ok } \| { error }` |
-| `game:next` | `{ mode: 'again' \| 'lobby' }` (host only, results phase) | `{ ok }` |
+| `game:next` | `{ mode: 'again' \| 'lobby' \| 'reset' }` (host only, results phase). `reset` clears `totals` and returns to the lobby | `{ ok }` |
 | `fx:react` | `{ emoji }` (whitelisted, max 1 per second per player) | — |
 
 ### Server → client
 | Event | Payload | When |
 |---|---|---|
 | `room:state` | lobby view: code, hostId, players (no secrets), phase, settings, totals | any room change |
-| `game:view` | this player's `View` | after every accepted action / tick |
+| `game:view` | this player's `View` | after every accepted action, on a fired turn timeout, and immediately after a successful `room:rejoin` / mid-game join so a refreshed client is never left with a blank table |
 | `game:events` | `GameEvent[]` | after actions (log + toasts) |
 | `game:result` | `RoundResult` + totals | round end |
 | `fx:react` | `{ playerId, emoji }` | someone reacted |
+
+**Ticks are not broadcasts.** The runner calls `onTick` on a short interval, but only emits
+`game:view` when the tick actually changed state (a turn timed out). The countdown itself is
+rendered client-side from `turnEndsAt`, so an idle turn costs no traffic.
+
+**Rejoin is ours, not Socket.io's.** We do not enable Socket.io connection state recovery —
+identity is re-established by `room:rejoin` with `{ playerId, secret }`. Running both would
+give two competing notions of "the same player".
 
 ### Last Card actions
 ```ts
@@ -215,6 +241,7 @@ type Card = { id: string; color: Color | 'wild'; value: '0'|'1'|'2'|'3'|'4'|'5'|
 5. Speaking rings: listen to `RoomEvent.ActiveSpeakersChanged`; map participant identity → playerId.
 6. Mute badges: track muted / unmuted events per participant.
 7. Push-to-talk: keep the mic track published, mute it by default, unmute while the button / Space is held.
+   **Space collides with the browser default** of activating a focused button, so holding Space to talk while a card has focus would also play that card. The PTT handler listens on `document`, calls `preventDefault()` on `keydown`/`keyup` for Space, and cards are therefore played with **Enter only**. Ignore the Space binding while focus is in a text input.
 8. "Mute everyone": set each remote participant's audio volume to 0 (local only).
 9. Leaving the room or the tab → `room.disconnect()`.
 
@@ -270,7 +297,7 @@ In dev, Vite proxies `/api` and `/socket.io` to the server so the client always 
 - Three tabs: create, join, refresh mid-lobby, refresh mid-game, close one tab for 30s and come back.
 - Phone (real device) on mobile data + laptop on Wi-Fi: voice both ways, speaking rings, push-to-talk.
 - 390×844 and 1440×900: nothing overlaps, hand is fully visible above the voice bar.
-- Keyboard: tab through cards, Enter plays, Space push-to-talk.
+- Keyboard: tab through cards, **Enter plays** (not Space — Space is push-to-talk and is prevented from activating focused buttons), Space push-to-talk.
 - Reduced motion on: game still fully playable.
 - Mic access only works on HTTPS or `localhost`. To test a phone against your laptop, use the deployed URL or a tunnel (for example `cloudflared tunnel --url http://localhost:5173`).
 
