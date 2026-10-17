@@ -6,9 +6,14 @@ The detailed spec behind `CLAUDE.md`: what to build, how the pieces talk, and wh
 
 ## 1. Product in one paragraph
 
-A friend opens holla!, picks a name and avatar, taps **Create a room**, and shares a 4-letter code or link.
+A friend opens holla!, picks a name and avatar, taps **Create a room**, chooses a game, and shares a 4-letter code or link.
 Up to 15 friends join from phones or laptops, talk over built-in voice, and play **Last Card** (Uno-style).
 After each round there's a results screen, then another deal. No sign-up, nothing to install.
+
+**Screen flow:** Home → Pick a game → Lobby → Table → Results, with Results looping back to
+Table ("Deal another round") or Lobby. The host can return to the picker from the lobby at any
+time before the deal. Players who join by code or link land straight in the lobby — the host
+already chose the game.
 
 ---
 
@@ -69,7 +74,36 @@ The client side of a game is a React component in `client/src/games/<id>/`:
 type GameUIProps<View, Action> = { view: View; me: string; players: PlayerRef[]; send: (a: Action) => void };
 ```
 
-Registry (`shared/src/games/index.ts` and `client/src/games/index.ts`) maps `id → module / component`. The core only uses the registry.
+### Catalogue vs modules
+
+The **Pick a game** screen has to list games that are not built yet ("Coming soon"), which by
+definition have no `GameModule`. So display metadata is separate from implementation:
+
+```ts
+export type GameInfo = {
+  id: string;                 // 'last-card', 'snakes-ladders'
+  name: string;               // 'Last Card'
+  tagline: string;            // one line for the game card
+  minPlayers: number; maxPlayers: number;
+  estimate: string;           // '~10 min a round'
+  status: 'ready' | 'soon';   // 'soon' entries have no module and cannot be started
+};
+```
+
+Registry (`shared/src/games/index.ts` and `client/src/games/index.ts`) exports:
+
+- `catalogue: GameInfo[]` — everything the picker shows, ready or not.
+- `modules: Record<string, GameModule>` — only `status: 'ready'` ids appear here.
+
+The server rejects `room:setGame` / `game:start` for any id that is not in `modules`, so a
+"coming soon" card can never start a round even if a client fakes the event. The core still
+only talks to the `GameModule` interface — `catalogue` is presentation data, nothing more.
+
+### Lobby settings come from the game
+
+The lobby's **House rules** panel is game-specific (stacking and 7-0 mean nothing to Snakes &
+Ladders). Each game owns its settings UI in `client/src/games/<id>/Settings.tsx`; the lobby
+renders whichever one matches `room.gameId` and never hardcodes Last Card's rules.
 
 ---
 
@@ -179,8 +213,9 @@ All payloads are typed in `shared/src/events.ts`. Client → server events use a
 ### Client → server
 | Event | Payload | Ack |
 |---|---|---|
-| `room:create` | `{ name, avatar }` | `{ code, playerId, secret }` |
+| `room:create` | `{ name, avatar, gameId }` | `{ code, playerId, secret }` |
 | `room:join` | `{ code, name, avatar }` | `{ code, playerId, secret }` |
+| `room:setGame` | `{ gameId }` (host only, lobby only, must be a `ready` game) | `{ ok } \| { error }` |
 | `room:rejoin` | `{ code, playerId, secret }` | `{ ok }` |
 | `room:leave` | `{}` | `{ ok }` |
 | `room:settings` | `Partial<Settings>` (host only, lobby only) | `{ ok }` |
@@ -268,6 +303,7 @@ Free plan note: LiveKit Cloud's free Build plan has a monthly allowance of parti
 - **Buttons:** Lilita One, 3px border, 4px offset shadow, press = translate 3px and shrink shadow.
 - **Cards:** colour face with diagonal stripes, cream circle with the value, corner values, and a corner shape per colour (red ◆, yellow ●, green ▲, blue ■) for colour-blind players. Wild = 4-colour pinwheel.
 - **Card back:** `--line` with a dot grid and a pink "h!" badge.
+- **Game cards (picker):** sticker panel, cover art panel on `--ink-3` with the dot grid, status pill top-right (`--mint` "Ready" / `--paper-2` "Coming soon"), meta chips on `--paper-2`, full-width action button. Unbuilt games are desaturated and their button is disabled. A dashed "More games on the way" tile closes the grid so the list never looks finished.
 - **Speaking:** pulsing `--mint` ring around the avatar. **Turn:** `--sun` conic timer ring + yellow name pill.
 - **Copy:** sentence case, plain verbs ("Create a room", "Deal another round"). No ALL CAPS labels.
 - **Motion:** card fly-to-pile, pop on new top card, "Last card!" stamp, confetti on results. All off under `prefers-reduced-motion`.

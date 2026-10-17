@@ -33,8 +33,8 @@ holla/
     types.ts                    # Player, Room, events
     events.ts                   # typed socket event names + payloads
     games/
-      index.ts                  # game registry
-      types.ts                  # GameModule interface
+      index.ts                  # game registry: catalogue (incl. coming soon) + modules
+      types.ts                  # GameModule + GameInfo interfaces
       last-card/                # engine: deck.ts, rules.ts, index.ts, *.test.ts
   server/src/
     index.ts                    # express + socket.io + static client
@@ -44,8 +44,10 @@ holla/
   client/src/
     main.tsx  App.tsx
     styles/tokens.css           # colours, fonts, shadows from the mock
-    screens/                    # Home, Lobby, GameHost, Results
-    games/last-card/            # Table UI for Last Card
+    screens/                    # Home, Games, Lobby, GameHost, Results
+    games/
+      index.ts                  # id -> { Table, Settings } component registry
+      last-card/                # Table UI + Settings panel for Last Card
     components/                 # Card, Avatar, Seat, VoiceBar, Toast, Stamp...
     lib/socket.ts  lib/voice.ts  lib/session.ts
 ```
