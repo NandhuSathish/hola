@@ -7,8 +7,10 @@ import {
   firstFreeAvatar,
   isValidAvatar,
   isValidName,
+  isPickable,
   makeRoomCode,
   normaliseRoomCode,
+  settingsSpecs,
   uniqueName,
   type Player,
   type Room,
@@ -79,11 +81,16 @@ export function createRoomStore(options: StoreOptions = {}) {
   }
 
   /**
-   * The longest-present connected player takes over. Falls back to the
-   * longest-present player at all, so a room is never left without a host.
+   * Only runs when the host is no longer seated at all — they left, or the
+   * sweep retired them after the 60s grace. A host who merely drops (closed
+   * laptop, refresh, flaky wifi) keeps the crown until that window passes,
+   * which is what REFERENCE.md section 5 asks for.
+   *
+   * The longest-present connected player takes over, falling back to the
+   * longest-present player, so a room is never left without a host.
    */
   function reassignHost(room: Room): void {
-    if (room.players.some((p) => p.id === room.hostId && p.connected)) return;
+    if (room.players.some((p) => p.id === room.hostId)) return;
     const byAge = [...room.players].sort((a, b) => a.joinedAt - b.joinedAt);
     const next = byAge.find((p) => p.connected) ?? byAge[0];
     if (next) room.hostId = next.id;
@@ -91,6 +98,7 @@ export function createRoomStore(options: StoreOptions = {}) {
 
   function create(input: { name: string; avatar: string; gameId: string }): Outcome<Seat> {
     if (!isValidName(input.name)) return fail('Pick a name first.');
+    if (!isPickable(input.gameId)) return fail('That game is not ready to play yet.');
     const avatar = isValidAvatar(input.avatar) ? input.avatar : firstFreeAvatar([]);
     const at = now();
 
@@ -101,7 +109,7 @@ export function createRoomStore(options: StoreOptions = {}) {
       players: [host],
       phase: 'lobby',
       gameId: input.gameId,
-      settings: null,
+      settings: settingsSpecs[input.gameId]?.defaults ?? null,
       game: null,
       totals: {},
       createdAt: at,
@@ -162,6 +170,36 @@ export function createRoomStore(options: StoreOptions = {}) {
     return room;
   }
 
+  /** Host swaps the game before the deal. Settings reset to that game's defaults. */
+  function setGame(playerId: string, gameId: string): Outcome<Room> {
+    const room = roomOfPlayer(playerId);
+    if (!room) return fail('You are not in a room.');
+    if (room.hostId !== playerId) return fail('Only the host can change the game.');
+    if (room.phase !== 'lobby') return fail('You can only change the game before the deal.');
+    if (!isPickable(gameId)) return fail('That game is not ready to play yet.');
+
+    room.gameId = gameId;
+    room.settings = settingsSpecs[gameId]?.defaults ?? null;
+    return ok(room);
+  }
+
+  /**
+   * The core never interprets settings (rule 4) — it hands the patch to the
+   * active game's spec and stores whatever comes back.
+   */
+  function updateSettings(playerId: string, patch: unknown): Outcome<Room> {
+    const room = roomOfPlayer(playerId);
+    if (!room) return fail('You are not in a room.');
+    if (room.hostId !== playerId) return fail('Only the host can change the rules.');
+    if (room.phase !== 'lobby') return fail('You can only change the rules before the deal.');
+
+    const spec = settingsSpecs[room.gameId];
+    if (!spec) return fail('That game has no settings.');
+
+    room.settings = spec.apply(room.settings, patch);
+    return ok(room);
+  }
+
   /** Dropped connection: hold the seat, let the sweep decide later. */
   function markDisconnected(playerId: string): Room | undefined {
     const room = roomOfPlayer(playerId);
@@ -172,7 +210,7 @@ export function createRoomStore(options: StoreOptions = {}) {
       player.connected = false;
       player.lastSeen = now();
     }
-    reassignHost(room);
+    // Deliberately no reassignHost here: the seat is still theirs.
     return room;
   }
 
@@ -215,6 +253,8 @@ export function createRoomStore(options: StoreOptions = {}) {
     join,
     rejoin,
     leave,
+    setGame,
+    updateSettings,
     markDisconnected,
     sweep,
     get,

@@ -116,6 +116,47 @@ describe('leaving and host handover', () => {
     expect(store.get(host.code)!.hostId).toBe(third.playerId);
   });
 
+  it('keeps the crown while the host is only briefly disconnected', () => {
+    const host = seat('Host');
+    clock += 10;
+    seat('Second', host.code);
+
+    // a refresh, not a departure
+    store.markDisconnected(host.playerId);
+    expect(store.get(host.code)!.hostId).toBe(host.playerId);
+
+    clock += DISCONNECT_GRACE_MS - 1;
+    store.sweep();
+    expect(store.get(host.code)!.hostId).toBe(host.playerId);
+
+    store.rejoin({ ...host });
+    expect(store.get(host.code)!.hostId).toBe(host.playerId);
+  });
+
+  it('hands the crown over once the host is gone past the grace window', () => {
+    const host = seat('Host');
+    clock += 10;
+    const second = seat('Second', host.code);
+
+    store.markDisconnected(host.playerId);
+    clock += DISCONNECT_GRACE_MS;
+    store.sweep();
+
+    expect(store.get(host.code)!.hostId).toBe(second.playerId);
+  });
+
+  it('does not let a rejoining guest steal the crown from a dropped host', () => {
+    const host = seat('Host');
+    clock += 10;
+    const guest = seat('Guest', host.code);
+
+    store.markDisconnected(host.playerId);
+    store.markDisconnected(guest.playerId);
+    store.rejoin({ ...guest });
+
+    expect(store.get(host.code)!.hostId).toBe(host.playerId);
+  });
+
   it('deletes the room when the last player leaves', () => {
     const host = seat('Only');
     store.leave(host.playerId);
@@ -185,5 +226,84 @@ describe('views', () => {
 
     const player = store.get(host.code)!.players.find((p) => p.id === late.playerId)!;
     expect(player.spectator).toBe(true);
+  });
+});
+
+describe('choosing a game and its rules', () => {
+  it('starts with the chosen game and its defaults', () => {
+    const host = seat('Host');
+    const room = store.get(host.code)!;
+    expect(room.gameId).toBe('last-card');
+    expect(room.settings).toMatchObject({ stackDraw: true, turnTimer: 20 });
+  });
+
+  it('refuses to create a room on a coming-soon game', () => {
+    const res = store.create({ name: 'Host', avatar: '🐯', gameId: 'snakes-ladders' });
+    expect(res).toEqual({ ok: false, error: 'That game is not ready to play yet.' });
+  });
+
+  it('refuses to switch to a coming-soon game', () => {
+    const host = seat('Host');
+    expect(store.setGame(host.playerId, 'snakes-ladders')).toEqual({
+      ok: false,
+      error: 'That game is not ready to play yet.',
+    });
+    expect(store.get(host.code)!.gameId).toBe('last-card');
+  });
+
+  it('refuses an unknown game id', () => {
+    const host = seat('Host');
+    expect(store.setGame(host.playerId, 'not-a-game').ok).toBe(false);
+  });
+
+  it('lets only the host change the game', () => {
+    const host = seat('Host');
+    const guest = seat('Guest', host.code);
+    expect(store.setGame(guest.playerId, 'last-card')).toEqual({
+      ok: false,
+      error: 'Only the host can change the game.',
+    });
+  });
+
+  it('refuses a game change once play has started', () => {
+    const host = seat('Host');
+    store.get(host.code)!.phase = 'playing';
+    expect(store.setGame(host.playerId, 'last-card')).toEqual({
+      ok: false,
+      error: 'You can only change the game before the deal.',
+    });
+  });
+
+  it('folds a settings patch in through the game spec', () => {
+    const host = seat('Host');
+    const res = store.updateSettings(host.playerId, { sevenZero: true, turnTimer: 40 });
+    expect(res.ok).toBe(true);
+    expect(store.get(host.code)!.settings).toMatchObject({
+      sevenZero: true,
+      turnTimer: 40,
+      stackDraw: true,
+    });
+  });
+
+  it('ignores junk in a settings patch instead of storing it', () => {
+    const host = seat('Host');
+    store.updateSettings(host.playerId, {
+      turnTimer: 9999,
+      stackDraw: 'yes please',
+      evil: 'payload',
+    });
+    const settings = store.get(host.code)!.settings as Record<string, unknown>;
+    expect(settings['turnTimer']).toBe(20);
+    expect(settings['stackDraw']).toBe(true);
+    expect(settings).not.toHaveProperty('evil');
+  });
+
+  it('lets only the host change the rules', () => {
+    const host = seat('Host');
+    const guest = seat('Guest', host.code);
+    expect(store.updateSettings(guest.playerId, { sevenZero: true })).toEqual({
+      ok: false,
+      error: 'Only the host can change the rules.',
+    });
   });
 });

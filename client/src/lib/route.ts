@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react';
 import { isValidRoomCode, normaliseRoomCode } from '@holla/shared';
 
-export type Route = { screen: 'home' } | { screen: 'room'; code: string };
+export type Route =
+  | { screen: 'home' }
+  /** Picking a game. With a code the host is swapping it; without, a new room. */
+  | { screen: 'games'; code: string | null }
+  | { screen: 'lobby'; code: string };
 
-/** /r/KPXJ is the invite link; everything else is home. */
 export function parseRoute(pathname: string): Route {
-  const match = /^\/r\/([a-zA-Z]{4})\/?$/.exec(pathname);
-  const code = match?.[1];
-  if (code && isValidRoomCode(code)) {
-    return { screen: 'room', code: normaliseRoomCode(code) };
+  if (/^\/games\/?$/.test(pathname)) return { screen: 'games', code: null };
+
+  const room = /^\/r\/([a-zA-Z]{4})(\/games)?\/?$/.exec(pathname);
+  const raw = room?.[1];
+  if (raw && isValidRoomCode(raw)) {
+    const code = normaliseRoomCode(raw);
+    return room[2] ? { screen: 'games', code } : { screen: 'lobby', code };
   }
+
   return { screen: 'home' };
 }
 
@@ -20,8 +27,8 @@ export function navigate(to: string): void {
 }
 
 /**
- * Five screens do not need a router library, just the history API and a
- * listener. Back and forward work because we push real URLs.
+ * A handful of screens do not need a router dependency, just the history API
+ * and a listener. Back and forward work because we push real URLs.
  */
 export function useRoute(): Route {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
@@ -36,3 +43,5 @@ export function useRoute(): Route {
 }
 
 export const roomPath = (code: string) => `/r/${code.toUpperCase()}`;
+export const gamesPath = (code?: string | null) =>
+  code ? `/r/${code.toUpperCase()}/games` : '/games';

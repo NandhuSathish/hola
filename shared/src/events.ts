@@ -23,6 +23,10 @@ export interface ClientToServerEvents {
   'room:join': (input: JoinRoomInput, ack: (res: AckWith<Seat>) => void) => void;
   'room:rejoin': (input: RejoinRoomInput, ack: (res: Ack) => void) => void;
   'room:leave': (ack: (res: Ack) => void) => void;
+  /** Host only, lobby only, and the game must be a 'ready' one. */
+  'room:setGame': (input: { gameId: string }, ack: (res: Ack) => void) => void;
+  /** Host only, lobby only. The patch is validated by the game's own spec. */
+  'room:settings': (patch: unknown, ack: (res: Ack) => void) => void;
 }
 
 export interface ServerToClientEvents {

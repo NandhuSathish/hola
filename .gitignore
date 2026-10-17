@@ -24,5 +24,8 @@ npm-debug.log*
 # test output
 coverage/
 
+# local build plan - deliberately not pushed
+PHASE_PLAN.md
+
 # local Claude Code settings
 .claude/settings.local.json

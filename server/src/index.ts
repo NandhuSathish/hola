@@ -130,6 +130,36 @@ io.on('connection', (socket) => {
     if (room) broadcast(room.code);
   });
 
+  socket.on('room:setGame', (input, ack) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) {
+      ack({ ok: false, error: 'You are not in a room.' });
+      return;
+    }
+    const res = store.setGame(playerId, input.gameId);
+    if (!res.ok) {
+      ack({ ok: false, error: res.error });
+      return;
+    }
+    ack({ ok: true });
+    broadcast(res.value.code);
+  });
+
+  socket.on('room:settings', (patch, ack) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) {
+      ack({ ok: false, error: 'You are not in a room.' });
+      return;
+    }
+    const res = store.updateSettings(playerId, patch);
+    if (!res.ok) {
+      ack({ ok: false, error: res.error });
+      return;
+    }
+    ack({ ok: true });
+    broadcast(res.value.code);
+  });
+
   socket.on('disconnect', () => {
     const playerId = socket.data.playerId;
     if (!playerId) return;

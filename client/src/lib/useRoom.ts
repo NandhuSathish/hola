@@ -120,6 +120,26 @@ export function useRoom(codeFromUrl: string | null) {
     [patch],
   );
 
+  const setGame = useCallback(
+    (gameId: string) => {
+      patch({ error: null });
+      socket.emit('room:setGame', { gameId }, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+        else navigate(roomPath(codeRef.current ?? ''));
+      });
+    },
+    [patch],
+  );
+
+  const updateSettings = useCallback(
+    (settingsPatch: Record<string, unknown>) => {
+      socket.emit('room:settings', settingsPatch, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+      });
+    },
+    [patch],
+  );
+
   const leaveRoom = useCallback(() => {
     const code = codeRef.current;
     socket.emit('room:leave', () => {
@@ -129,5 +149,5 @@ export function useRoom(codeFromUrl: string | null) {
     });
   }, [patch]);
 
-  return { ...state, createRoom, joinRoom, leaveRoom };
+  return { ...state, createRoom, joinRoom, setGame, updateSettings, leaveRoom };
 }
