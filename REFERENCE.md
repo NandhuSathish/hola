@@ -173,7 +173,8 @@ Wild Draw 4 can be played any time (no challenge rule in v1).
 ## 5. Rooms and sessions
 
 - **Room code:** 4 letters from `ABCDEFGHJKLMNPQRSTUVWXYZ` (no I, O). Case-insensitive input.
-- **Player identity:** server issues `{ playerId, secret }` on create/join. Client stores it in `localStorage` per room code.
+- **Player identity:** server issues `{ playerId, secret }` on create/join.
+- **Where it is stored:** the seat lives in `sessionStorage` per room code, the profile (name, avatar) in `localStorage`. sessionStorage is per browser tab, so it still survives a refresh, a crash and a dropped connection — which is all the 60s grace window needs — while letting two tabs be two players. With localStorage every tab on a device would silently share one seat, which would stop friends sharing a laptop and make the "three tabs stay in sync" test impossible.
 - **Rejoin:** on reconnect the client sends `room:rejoin` with the stored pair. Matching secret → same seat.
 - **Limits:** 15 players max. Names 1–14 chars, trimmed, unique within the room (append a digit if taken). The join/create ack returns only `{ code, playerId, secret }`; the client reads its final (possibly de-duplicated) name from the `room:state` that follows, matching on `playerId`.
 - **Avatars:** 16 options, so every seat at a full table is distinct — 🐯 🦊 🐼 🐸 🐙 🦄 🐨 🐵 🐺 🐷 🦁 🐮 🐔 🐧 🦉 🐝. Unique within a room where possible; the picker dims ones already taken.
