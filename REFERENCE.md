@@ -47,7 +47,9 @@ export interface GameModule<State, Action, View, Settings> {
   maxPlayers: number;            // 15
   defaultSettings: Settings;
 
-  setup(players: PlayerRef[], settings: Settings, rng: () => number): State;
+  // ctx carries now as well as rng: a turn timer needs a start time, and the
+  // engine may not read the clock itself.
+  setup(players: PlayerRef[], settings: Settings, ctx: { now: number; rng: () => number }): State;
 
   // Validate + apply. Return an error string instead of throwing for illegal moves.
   onAction(state: State, playerId: string, action: Action, ctx: { now: number; rng: () => number })

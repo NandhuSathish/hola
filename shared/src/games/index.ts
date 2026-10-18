@@ -1,5 +1,6 @@
 import type { GameInfo, GameModule, SettingsSpec } from './types.js';
 import { lastCardSettings } from './last-card/settings.js';
+import { lastCard } from './last-card/index.js';
 
 /**
  * Everything the picker shows, built or not. Order is display order.
@@ -32,11 +33,10 @@ export const settingsSpecs: Record<string, SettingsSpec> = {
   'last-card': lastCardSettings as SettingsSpec,
 };
 
-/**
- * Engines. Last Card's lands in Phase 2 — until then the lobby works and
- * game:start has nothing to run, which is exactly the honest state of things.
- */
-export const modules: Record<string, GameModule> = {};
+/** Engines. A game is only startable once it appears here. */
+export const modules: Record<string, GameModule> = {
+  'last-card': lastCard as GameModule,
+};
 
 export const DEFAULT_GAME_ID = 'last-card';
 

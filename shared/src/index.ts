@@ -50,6 +50,27 @@ export {
   settingsSpecs,
 } from './games/index.js';
 
+export type {
+  Card,
+  CardValue,
+  Color,
+  LastCardAction,
+  LastCardState,
+  LastCardView,
+  SeatState,
+} from './games/last-card/types.js';
+export { lastCard } from './games/last-card/index.js';
+export {
+  buildDeck,
+  canPlayOn,
+  cardValue,
+  decksFor,
+  handValue,
+  isNumberCard,
+  isWild,
+  shuffle,
+} from './games/last-card/deck.js';
+
 export type { LastCardSettings, TurnTimer } from './games/last-card/settings.js';
 export { LAST_CARD_DEFAULTS, lastCardSettings } from './games/last-card/settings.js';
 

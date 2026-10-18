@@ -40,7 +40,11 @@ export interface GameModule<State = unknown, Action = unknown, View = unknown, S
   maxPlayers: number;
   defaultSettings: Settings;
 
-  setup(players: PlayerRef[], settings: Settings, rng: () => number): State;
+  /**
+   * ctx carries now as well as rng: a turn timer needs a start time, and
+   * rule 3 forbids reading the clock inside the engine.
+   */
+  setup(players: PlayerRef[], settings: Settings, ctx: { now: number; rng: () => number }): State;
 
   /** Validate and apply. Illegal moves come back as an error, never a throw. */
   onAction(
