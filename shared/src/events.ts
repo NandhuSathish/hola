@@ -1,4 +1,5 @@
 import type { RoomView } from './types.js';
+import type { GameEvent, RoundResult } from './games/types.js';
 
 /**
  * Every client -> server event answers with an acknowledgement rather than
@@ -27,6 +28,12 @@ export interface ClientToServerEvents {
   'room:setGame': (input: { gameId: string }, ack: (res: Ack) => void) => void;
   /** Host only, lobby only. The patch is validated by the game's own spec. */
   'room:settings': (patch: unknown, ack: (res: Ack) => void) => void;
+  /** Host only, lobby only, at least two players, and the game must have an engine. */
+  'game:start': (ack: (res: Ack) => void) => void;
+  /** A move. The shape belongs to the active game, so it is opaque here. */
+  'game:action': (action: unknown, ack: (res: Ack) => void) => void;
+  /** Host only, results phase. */
+  'game:next': (input: { mode: 'again' | 'lobby' | 'reset' }, ack: (res: Ack) => void) => void;
 }
 
 export interface ServerToClientEvents {
@@ -34,6 +41,15 @@ export interface ServerToClientEvents {
   'room:state': (view: RoomView) => void;
   /** The room went away under you (host closed it, or it was swept). */
   'room:closed': (payload: { reason: string }) => void;
+  /**
+   * This player's own view of the game. Sent after every accepted action, on a
+   * fired turn timeout, and right after a rejoin — never on a plain tick.
+   */
+  'game:view': (view: unknown) => void;
+  /** Feeds the log and toasts. */
+  'game:events': (events: GameEvent[]) => void;
+  /** Round over: who won, what everyone was holding, and the running totals. */
+  'game:result': (payload: { result: RoundResult; totals: Record<string, number> }) => void;
 }
 
 /** Nothing server-to-server yet; Socket.io wants the slot filled. */

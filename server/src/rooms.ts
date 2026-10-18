@@ -128,9 +128,13 @@ export function createRoomStore(options: StoreOptions = {}) {
 
     const at = now();
     const name = uniqueName(input.name, room.players.map((p) => p.name));
-    const avatar = isValidAvatar(input.avatar)
-      ? input.avatar
-      : firstFreeAvatar(room.players.map((p) => p.avatar));
+    // Unique within a room where possible (REFERENCE.md section 5): a taken
+    // avatar is quietly swapped for a free one, so a table of people who never
+    // touched the picker still reads at a glance.
+    const taken = room.players.map((p) => p.avatar);
+    const wanted = input.avatar;
+    const avatar =
+      isValidAvatar(wanted) && !taken.includes(wanted) ? wanted : firstFreeAvatar(taken);
 
     const player = newPlayer(name, avatar, at);
     // Joining mid-round means watching until the next deal.
@@ -218,10 +222,15 @@ export function createRoomStore(options: StoreOptions = {}) {
    * Removes players past the grace window and rooms that have sat empty.
    * Returns the rooms that changed so callers can broadcast.
    */
-  function sweep(): { changed: Room[]; closed: string[] } {
+  function sweep(): {
+    changed: Room[];
+    closed: string[];
+    removed: { code: string; playerIds: string[] }[];
+  } {
     const at = now();
     const changed: Room[] = [];
     const closed: string[] = [];
+    const removed: { code: string; playerIds: string[] }[] = [];
 
     for (const room of [...rooms.values()]) {
       const expired = room.players.filter(
@@ -233,6 +242,7 @@ export function createRoomStore(options: StoreOptions = {}) {
         room.players = room.players.filter((p) => !expired.includes(p));
         reassignHost(room);
         changed.push(room);
+        removed.push({ code: room.code, playerIds: expired.map((p) => p.id) });
       }
 
       const nobodyHere = room.players.every((p) => !p.connected);
@@ -245,12 +255,18 @@ export function createRoomStore(options: StoreOptions = {}) {
       }
     }
 
-    return { changed, closed };
+    return { changed, closed, removed };
+  }
+
+  /** Rooms with a round in progress, for the turn-timer tick. */
+  function playing(): Room[] {
+    return [...rooms.values()].filter((r) => r.phase === 'playing');
   }
 
   return {
     create,
     join,
+    playing,
     rejoin,
     leave,
     setGame,

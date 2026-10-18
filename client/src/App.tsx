@@ -2,7 +2,7 @@ import { useRoute } from './lib/route';
 import { useRoom } from './lib/useRoom';
 import { Home } from './screens/Home';
 import { Games } from './screens/Games';
-import { Lobby } from './screens/Lobby';
+import { RoomScreen } from './screens/RoomScreen';
 
 export function App() {
   const route = useRoute();
@@ -13,7 +13,7 @@ export function App() {
     case 'games':
       return <Games room={room} code={route.code} />;
     case 'lobby':
-      return <Lobby room={room} code={route.code} />;
+      return <RoomScreen room={room} code={route.code} />;
     default:
       return <Home room={room} />;
   }

@@ -41,6 +41,8 @@ export function Lobby({ room, code }: Props) {
   const Settings = ui?.Settings;
   const seated = view.players.length;
   const emptySeats = Math.max(0, MAX_PLAYERS - seated);
+  const enoughPlayers = seated >= (game?.minPlayers ?? 2);
+  const hostName = view.players.find((p) => p.id === view.hostId)?.name ?? 'the host';
 
   return (
     <main className="lobby-screen">
@@ -126,13 +128,20 @@ export function Lobby({ room, code }: Props) {
             <p className="form-note">This game has no settings.</p>
           )}
 
-          <button type="button" className="btn btn-pink start" disabled title="Phase 3">
+          <button
+            type="button"
+            className="btn btn-pink start"
+            disabled={!isHost || !enoughPlayers}
+            onClick={() => room.startGame()}
+          >
             Start game
           </button>
           <p className="host-note">
-            {isHost
-              ? 'Dealing arrives with the Last Card engine in Phase 2.'
-              : `You'll see the deal when ${view.players.find((p) => p.id === view.hostId)?.name ?? 'the host'} starts it.`}
+            {!isHost
+              ? `You'll see the deal when ${hostName} starts it.`
+              : enoughPlayers
+                ? `Deal ${game?.name ?? 'the game'} for everyone here.`
+                : `${game?.name ?? 'This game'} needs at least ${game?.minPlayers ?? 2} players.`}
           </p>
 
           {room.error && <p className="form-error" role="alert">{room.error}</p>}

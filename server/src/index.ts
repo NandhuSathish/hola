@@ -5,12 +5,15 @@ import express from 'express';
 import { Server } from 'socket.io';
 import {
   SHARED_VERSION,
+  type GameEvent,
+  type Room,
   type ClientToServerEvents,
   type InterServerEvents,
   type ServerToClientEvents,
   type SocketData,
 } from '@holla/shared';
 import { createRoomStore, toView } from './rooms.js';
+import { createGameRunner } from './gameRunner.js';
 
 const PORT = Number(process.env['PORT'] ?? 3000);
 const isProduction = process.env['NODE_ENV'] === 'production';
@@ -30,6 +33,7 @@ const io = new Server<
 >(httpServer);
 
 const store = createRoomStore();
+const runner = createGameRunner();
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, shared: SHARED_VERSION, uptime: Math.round(process.uptime()) });
@@ -45,9 +49,40 @@ if (isProduction) {
   });
 }
 
+const playerRoom = (playerId: string) => 'p:' + playerId;
+
 function broadcast(code: string): void {
   const room = store.get(code);
   if (room) io.to(code).emit('room:state', toView(room));
+}
+
+/** One player's own view — never anyone else's hand (rule 2). */
+function sendView(room: Room, playerId: string): void {
+  const view = runner.viewFor(room, playerId);
+  if (view !== null) io.to(playerRoom(playerId)).emit('game:view', view);
+}
+
+/** Everyone gets their own view; nobody gets a broadcast of the whole state. */
+function sendAllViews(room: Room): void {
+  for (const player of room.players) sendView(room, player.id);
+}
+
+function sendEvents(room: Room, events: GameEvent[]): void {
+  if (events.length > 0) io.to(room.code).emit('game:events', events);
+}
+
+function sendResultIfDone(room: Room): void {
+  if (room.phase !== 'results') return;
+  const result = runner.result(room);
+  if (result) io.to(room.code).emit('game:result', { result, totals: room.totals });
+}
+
+/** The usual trio after anything that moves a round along. */
+function publish(room: Room, events: GameEvent[]): void {
+  broadcast(room.code);
+  sendAllViews(room);
+  sendEvents(room, events);
+  sendResultIfDone(room);
 }
 
 /**
@@ -78,6 +113,7 @@ io.on('connection', (socket) => {
     socket.data.playerId = res.value.playerId;
     socket.data.code = res.value.code;
     void socket.join(res.value.code);
+    void socket.join(playerRoom(res.value.playerId));
 
     ack({ ok: true, ...res.value });
     broadcast(res.value.code);
@@ -94,9 +130,15 @@ io.on('connection', (socket) => {
     socket.data.playerId = res.value.playerId;
     socket.data.code = res.value.code;
     void socket.join(res.value.code);
+    void socket.join(playerRoom(res.value.playerId));
 
     ack({ ok: true, ...res.value });
     broadcast(res.value.code);
+
+    // Walking in on a round in progress: hand over the spectator view at once,
+    // otherwise this client sits on an empty table until someone else moves.
+    const joined = store.get(res.value.code);
+    if (joined) sendView(joined, res.value.playerId);
   });
 
   socket.on('room:rejoin', (input, ack) => {
@@ -109,9 +151,12 @@ io.on('connection', (socket) => {
     socket.data.playerId = input.playerId;
     socket.data.code = res.value.code;
     void socket.join(res.value.code);
+    void socket.join(playerRoom(input.playerId));
 
     ack({ ok: true });
     broadcast(res.value.code);
+    // A refreshed client has no game state, so hand it straight back.
+    sendView(res.value, input.playerId);
   });
 
   socket.on('room:leave', (ack) => {
@@ -160,6 +205,72 @@ io.on('connection', (socket) => {
     broadcast(res.value.code);
   });
 
+  socket.on('game:start', (ack) => {
+    const playerId = socket.data.playerId;
+    const room = playerId ? store.roomOfPlayer(playerId) : undefined;
+    if (!playerId || !room) {
+      ack({ ok: false, error: 'You are not in a room.' });
+      return;
+    }
+    if (room.hostId !== playerId) {
+      ack({ ok: false, error: 'Only the host can start the game.' });
+      return;
+    }
+
+    const res = runner.start(room);
+    if (!res.ok) {
+      ack({ ok: false, error: res.error });
+      return;
+    }
+
+    ack({ ok: true });
+    publish(room, res.value.events);
+    console.log('[game] ' + room.code + ' dealt ' + room.gameId);
+  });
+
+  socket.on('game:action', (action, ack) => {
+    const playerId = socket.data.playerId;
+    const room = playerId ? store.roomOfPlayer(playerId) : undefined;
+    if (!playerId || !room) {
+      ack({ ok: false, error: 'You are not in a room.' });
+      return;
+    }
+
+    const res = runner.act(room, playerId, action);
+    if (!res.ok) {
+      // A refused move is normal play, not a failure: tell just this player,
+      // and resend their view so a hopeful click cannot desync them.
+      ack({ ok: false, error: res.error });
+      sendView(room, playerId);
+      return;
+    }
+
+    ack({ ok: true });
+    publish(room, res.value.events);
+  });
+
+  socket.on('game:next', (input, ack) => {
+    const playerId = socket.data.playerId;
+    const room = playerId ? store.roomOfPlayer(playerId) : undefined;
+    if (!playerId || !room) {
+      ack({ ok: false, error: 'You are not in a room.' });
+      return;
+    }
+    if (room.hostId !== playerId) {
+      ack({ ok: false, error: 'Only the host can do that.' });
+      return;
+    }
+
+    const res = runner.next(room, input.mode);
+    if (!res.ok) {
+      ack({ ok: false, error: res.error });
+      return;
+    }
+
+    ack({ ok: true });
+    publish(room, res.value.events);
+  });
+
   socket.on('disconnect', () => {
     const playerId = socket.data.playerId;
     if (!playerId) return;
@@ -171,7 +282,19 @@ io.on('connection', (socket) => {
 // Retires seats past the 60s grace window and rooms nobody came back to.
 const SWEEP_EVERY_MS = 5_000;
 setInterval(() => {
-  const { changed, closed } = store.sweep();
+  const { changed, closed, removed } = store.sweep();
+
+  // Anyone retired past the grace window leaves the round properly, so their
+  // cards go back to the pile rather than vanishing.
+  for (const { code, playerIds } of removed) {
+    const room = store.get(code);
+    if (!room) continue;
+    for (const playerId of playerIds) {
+      const res = runner.playerLeft(room, playerId);
+      if (res) publish(room, res.events);
+    }
+  }
+
   for (const room of changed) {
     if (store.get(room.code)) broadcast(room.code);
   }
@@ -180,6 +303,19 @@ setInterval(() => {
     console.log(`[room] ${code} closed`);
   }
 }, SWEEP_EVERY_MS).unref();
+
+/**
+ * Turn timers. The tick runs often, but only a fired timeout changes anything,
+ * and only then does anyone get a message — the countdown itself is drawn
+ * client-side from turnEndsAt (REFERENCE.md section 6).
+ */
+const TICK_EVERY_MS = 1_000;
+setInterval(() => {
+  for (const room of store.playing()) {
+    const res = runner.tick(room);
+    if (res) publish(room, res.events);
+  }
+}, TICK_EVERY_MS).unref();
 
 httpServer.listen(PORT, () => {
   console.log(

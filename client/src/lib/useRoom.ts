@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Ack, AckWith, RoomView, Seat } from '@holla/shared';
+import type { Ack, AckWith, GameEvent, LastCardView, RoomView, RoundResult, Seat } from '@holla/shared';
 import { socket, type ConnectionState } from './socket';
 import { clearSeat, loadSeat, saveSeat, type Profile } from './session';
 import { navigate, roomPath } from './route';
@@ -10,6 +10,11 @@ type State = {
   me: string | null;
   error: string | null;
   busy: boolean;
+  /** This player's own view of the round, or null outside one. */
+  game: LastCardView | null;
+  /** Most recent first, trimmed — the table only shows a few. */
+  log: GameEvent[];
+  result: { result: RoundResult; totals: Record<string, number> } | null;
 };
 
 export function useRoom(codeFromUrl: string | null) {
@@ -19,6 +24,9 @@ export function useRoom(codeFromUrl: string | null) {
     me: loadSeat(codeFromUrl ?? '')?.playerId ?? null,
     error: null,
     busy: false,
+    game: null,
+    log: [],
+    result: null,
   });
 
   // Kept in a ref so the socket handlers below always see the current code
@@ -56,7 +64,20 @@ export function useRoom(codeFromUrl: string | null) {
       rejoin();
     };
     const onDisconnect = () => patch({ connection: 'disconnected' });
-    const onState = (view: RoomView) => patch({ room: view, error: null });
+    const onState = (view: RoomView) => {
+      // Leaving a round behind clears what belonged to it.
+      setState((prev) => ({
+        ...prev,
+        room: view,
+        error: null,
+        ...(view.phase === 'lobby' ? { game: null, log: [], result: null } : {}),
+      }));
+    };
+    const onView = (view: unknown) => patch({ game: view as LastCardView });
+    const onEvents = (events: GameEvent[]) =>
+      setState((prev) => ({ ...prev, log: [...events].reverse().concat(prev.log).slice(0, 6) }));
+    const onResult = (payload: { result: RoundResult; totals: Record<string, number> }) =>
+      patch({ result: payload });
     const onClosed = (payload: { reason: string }) => {
       const code = codeRef.current;
       if (code) clearSeat(code);
@@ -68,6 +89,9 @@ export function useRoom(codeFromUrl: string | null) {
     socket.on('disconnect', onDisconnect);
     socket.on('room:state', onState);
     socket.on('room:closed', onClosed);
+    socket.on('game:view', onView);
+    socket.on('game:events', onEvents);
+    socket.on('game:result', onResult);
 
     if (socket.connected) rejoin();
 
@@ -76,6 +100,9 @@ export function useRoom(codeFromUrl: string | null) {
       socket.off('disconnect', onDisconnect);
       socket.off('room:state', onState);
       socket.off('room:closed', onClosed);
+      socket.off('game:view', onView);
+      socket.off('game:events', onEvents);
+      socket.off('game:result', onResult);
     };
   }, [patch, rejoin]);
 
@@ -140,6 +167,33 @@ export function useRoom(codeFromUrl: string | null) {
     [patch],
   );
 
+  const startGame = useCallback(() => {
+    patch({ error: null });
+    socket.emit('game:start', (res: Ack) => {
+      if (!res.ok) patch({ error: res.error });
+    });
+  }, [patch]);
+
+  /** A refused move is ordinary play, so it only shows a message. */
+  const sendAction = useCallback(
+    (action: unknown) => {
+      socket.emit('game:action', action, (res: Ack) => {
+        patch({ error: res.ok ? null : res.error });
+      });
+    },
+    [patch],
+  );
+
+  const nextRound = useCallback(
+    (mode: 'again' | 'lobby' | 'reset') => {
+      patch({ error: null });
+      socket.emit('game:next', { mode }, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+      });
+    },
+    [patch],
+  );
+
   const leaveRoom = useCallback(() => {
     const code = codeRef.current;
     socket.emit('room:leave', () => {
@@ -149,5 +203,15 @@ export function useRoom(codeFromUrl: string | null) {
     });
   }, [patch]);
 
-  return { ...state, createRoom, joinRoom, setGame, updateSettings, leaveRoom };
+  return {
+    ...state,
+    createRoom,
+    joinRoom,
+    setGame,
+    updateSettings,
+    startGame,
+    sendAction,
+    nextRound,
+    leaveRoom,
+  };
 }

@@ -18,6 +18,16 @@
   --sky: #2f8bff;
   --pink: #ff5fa8;
 
+  /*
+   * The mock names its palette after the look (sun, mint, sky) while the game
+   * names cards after the colour a player would say out loud (REFERENCE.md
+   * section 6). These aliases let `var(--${card.color})` just work, so no
+   * component has to carry a lookup table.
+   */
+  --yellow: var(--sun);
+  --green: var(--mint);
+  --blue: var(--sky);
+
   --shadow: 5px 5px 0 var(--line);
 
   --fd: 'Lilita One', system-ui, sans-serif; /* display: headings, cards, buttons */

@@ -307,6 +307,12 @@ export function onAction(
 ): ActionResult {
   if (input.finished) return { ok: false, error: 'The round is over.' };
 
+  // Actions arrive straight off a socket, so nothing about the shape can be
+  // taken on trust. An illegal move is an error, never a throw.
+  if (typeof action !== 'object' || action === null || typeof action.type !== 'string') {
+    return { ok: false, error: 'That move makes no sense here.' };
+  }
+
   const state = clone(input);
   const seat = seatOf(state, playerId);
   if (!seat) return { ok: false, error: 'You are not in this round.' };

@@ -136,6 +136,15 @@ describe('taking a turn', () => {
     );
   });
 
+  it('refuses malformed actions instead of throwing', () => {
+    // These arrive straight off a socket, so a bad shape must not crash anything.
+    const state = table({ hands: [[card('red', '1')], []] });
+    for (const junk of [null, undefined, 42, 'draw', [], {}, { type: 7 }, { nope: true }]) {
+      const result = onAction(state, 'p0', junk as never, ctx());
+      expect(result.ok).toBe(false);
+    }
+  });
+
   it('refuses a card that is not in your hand', () => {
     const state = table({ hands: [[card('red', '1')], []] });
     expect(err(onAction(state, 'p0', { type: 'play', cardId: 'nope' }, ctx()))).toBe(

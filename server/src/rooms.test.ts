@@ -54,6 +54,24 @@ describe('creating and joining', () => {
     expect(store.get(host.code)!.players.map((p) => p.name)).toEqual(['Sam', 'Sam2', 'Sam3']);
   });
 
+  it('gives everyone a different avatar, even if they all ask for the same one', () => {
+    const host = store.create({ name: 'Host', avatar: '🐯', gameId: 'last-card' });
+    if (!host.ok) throw new Error(host.error);
+    for (const who of ['A', 'B', 'C']) {
+      store.join({ code: host.value.code, name: who, avatar: '🐯' });
+    }
+    const avatars = store.get(host.value.code)!.players.map((p) => p.avatar);
+    expect(new Set(avatars).size).toBe(4);
+    expect(avatars[0]).toBe('🐯');
+  });
+
+  it('keeps a free avatar the player actually chose', () => {
+    const host = store.create({ name: 'Host', avatar: '🐯', gameId: 'last-card' });
+    if (!host.ok) throw new Error(host.error);
+    store.join({ code: host.value.code, name: 'B', avatar: '🦄' });
+    expect(store.get(host.value.code)!.players[1]?.avatar).toBe('🦄');
+  });
+
   it('fills to 15 and then refuses', () => {
     const host = seat('Host');
     for (let i = 1; i < MAX_PLAYERS; i++) seat(`P${i}`, host.code);
