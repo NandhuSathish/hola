@@ -1,6 +1,8 @@
 import type { GameInfo, GameModule, SettingsSpec } from './types.js';
 import { lastCardSettings } from './last-card/settings.js';
 import { lastCard } from './last-card/index.js';
+import { snakesSettings } from './snakes-ladders/settings.js';
+import { snakesLadders } from './snakes-ladders/index.js';
 
 /**
  * Everything the picker shows, built or not. Order is display order.
@@ -32,20 +34,22 @@ export const catalogue: GameInfo[] = [
     tagline:
       'Roll, climb, and get swallowed one square from home. Same room, same voice chat, a lot more shouting at dice.',
     minPlayers: 2,
-    maxPlayers: 4,
+    maxPlayers: 8,
     estimate: '~15 min',
-    status: 'soon',
+    status: 'ready',
   },
 ];
 
 /** Settings specs for games you can pick. The lobby needs these before any engine exists. */
 export const settingsSpecs: Record<string, SettingsSpec> = {
   'last-card': lastCardSettings as SettingsSpec,
+  'snakes-ladders': snakesSettings as SettingsSpec,
 };
 
 /** Engines. A game is only startable once it appears here. */
 export const modules: Record<string, GameModule> = {
   'last-card': lastCard as GameModule,
+  'snakes-ladders': snakesLadders as GameModule,
 };
 
 export const DEFAULT_GAME_ID = 'last-card';

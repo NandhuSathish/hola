@@ -71,6 +71,31 @@ export {
   shuffle,
 } from './games/last-card/deck.js';
 
+export type {
+  LastTurn,
+  MoveStep,
+  SnakesAction,
+  SnakesSeat,
+  SnakesState,
+  SnakesView,
+} from './games/snakes-ladders/types.js';
+export { snakesLadders } from './games/snakes-ladders/index.js';
+export {
+  COLUMNS,
+  CROWD_TILES,
+  FIRST_TILE,
+  LADDERS,
+  LAST_TILE,
+  MYSTERY_TILES,
+  SNAKES,
+  ladderAt,
+  snakeAt,
+  tileToCell,
+  walkPath,
+} from './games/snakes-ladders/board.js';
+export type { SnakesSettings, SnakesTurnTimer } from './games/snakes-ladders/settings.js';
+export { MAX_ROLLS_PER_TURN, SNAKES_DEFAULTS, snakesSettings } from './games/snakes-ladders/settings.js';
+
 export type { LastCardSettings, TurnTimer } from './games/last-card/settings.js';
 export { LAST_CARD_DEFAULTS, lastCardSettings } from './games/last-card/settings.js';
 

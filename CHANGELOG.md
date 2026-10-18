@@ -9,6 +9,37 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 4a — Snakes & Ladders
+
+Second game, and the first proof the registry works: adding it changed no core
+code at all. The only server diff was two test files swapping their example of
+an unbuilt game.
+
+- Pure engine with the board data from the mock: 7 ladders, 8 snakes, 10x10
+  boustrophedon. Dice from the injected rng, exact finish with bounce-back, a
+  six rolls again up to three times, and a turn timer that rolls for you.
+- `lib/canvas.ts`, shared by the board games: device-pixel sizing, a render
+  loop tied to the component, reduced motion, and pausing when the page is
+  hidden.
+- Canvas board with animated snakes, ladders and hopping tokens.
+
+**The state split.** The server owns positions and sends them in the view; the
+board owns pixels. A roll arrives as `lastTurn` carrying the journey — the
+tile-by-tile walk path, then any ladder or snake leg — and the token walks it.
+Anything not animating eases toward the server position, which is how a
+reconnecting client catches up without replaying a move it never saw.
+
+**Fixed**
+
+- `useCanvas` never re-armed its loop if the page was hidden when it mounted.
+  The first rAF never fired, and the visibility handler checked a flag that was
+  still true, so the board stayed blank forever.
+- The canvas needed `aspect-ratio: 1` in CSS. Sizing it only from JS left it at
+  the browser's default 2:1 until the first frame, so the layout jumped.
+
+The mock's six twists — mystery boxes, snake standoff, crowd vote, Noodle,
+shield and shake-to-roll — are 4b.
+
 ### Decisions · 2026-10-18
 
 - **Voice moves to v2.** It is the highest-risk and slowest-to-test part of the

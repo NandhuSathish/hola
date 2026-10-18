@@ -256,13 +256,13 @@ describe('choosing a game and its rules', () => {
   });
 
   it('refuses to create a room on a coming-soon game', () => {
-    const res = store.create({ name: 'Host', avatar: '🐯', gameId: 'snakes-ladders' });
+    const res = store.create({ name: 'Host', avatar: '🐯', gameId: 'hand-cricket' });
     expect(res).toEqual({ ok: false, error: 'That game is not ready to play yet.' });
   });
 
   it('refuses to switch to a coming-soon game', () => {
     const host = seat('Host');
-    expect(store.setGame(host.playerId, 'snakes-ladders')).toEqual({
+    expect(store.setGame(host.playerId, 'hand-cricket')).toEqual({
       ok: false,
       error: 'That game is not ready to play yet.',
     });

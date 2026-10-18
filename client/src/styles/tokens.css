@@ -17,6 +17,10 @@
   --mint: #22c97a;
   --sky: #2f8bff;
   --pink: #ff5fa8;
+  /* extra token colours the board games use */
+  --purple: #b48cff;
+  --orange: #ff9f45;
+  --teal: #5fd3e8;
 
   /*
    * The mock names its palette after the look (sun, mint, sky) while the game

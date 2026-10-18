@@ -55,7 +55,7 @@ describe('starting a round', () => {
 
   it('refuses a game with no engine behind it', () => {
     const { room: r } = room(3);
-    r.gameId = 'snakes-ladders';
+    r.gameId = 'hand-cricket';
     expect(runner.start(r)).toEqual({ ok: false, error: 'That game is not ready to play yet.' });
     expect(r.phase).toBe('lobby');
   });

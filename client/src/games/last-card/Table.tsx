@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, Color, GameEvent, LastCardView, PublicPlayer } from '@holla/shared';
 import { CardBack, PlayingCard, describeCard } from './Card';
 import { Confetti, FlyingCard, Stamp, Toast, type FlightPlan } from '../../components/Flourish';
+import { useTurnCountdown } from '../../lib/useTurnCountdown';
 import './Table.css';
 
 const COLORS: { value: Color; label: string }[] = [
@@ -50,7 +51,7 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
   const mySeat = view.seats.find((s) => s.playerId === me);
   const others = view.seats.filter((s) => s.playerId !== me);
 
-  const progress = useTurnProgress(view.turnPlayerId, view.turnEndsAt);
+  const progress = useTurnCountdown(view.turnPlayerId, view.turnEndsAt);
 
   // The newest event drives the toast, and a shout drives the stamp.
   const newest = events[0];
@@ -330,42 +331,6 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
       )}
     </div>
   );
-}
-
-/**
- * How much of the current turn is left, 0-100, for the ring around the avatar.
- *
- * The server deliberately does not broadcast a countdown (REFERENCE.md section
- * 6) — it sends `turnEndsAt` once and the clock runs here. The turn's length is
- * inferred from when this client first saw the turn change, so no extra state
- * has to travel.
- */
-function useTurnProgress(turnPlayerId: string, turnEndsAt: number | null): number {
-  const [progress, setProgress] = useState(100);
-  const startedAt = useRef(Date.now());
-  const lastTurn = useRef(turnPlayerId);
-
-  if (lastTurn.current !== turnPlayerId) {
-    lastTurn.current = turnPlayerId;
-    startedAt.current = Date.now();
-  }
-
-  useEffect(() => {
-    if (turnEndsAt === null) {
-      setProgress(100);
-      return;
-    }
-    const total = Math.max(1, turnEndsAt - startedAt.current);
-    const tick = () => {
-      const left = turnEndsAt - Date.now();
-      setProgress(Math.max(0, Math.min(100, (left / total) * 100)));
-    };
-    tick();
-    const timer = setInterval(tick, 250);
-    return () => clearInterval(timer);
-  }, [turnPlayerId, turnEndsAt]);
-
-  return Math.round(progress);
 }
 
 export { Confetti };
