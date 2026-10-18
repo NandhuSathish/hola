@@ -7,7 +7,8 @@ The detailed spec behind `CLAUDE.md`: what to build, how the pieces talk, and wh
 ## 1. Product in one paragraph
 
 A friend opens holla!, picks a name and avatar, taps **Create a room**, chooses a game, and shares a 4-letter code or link.
-Up to 15 friends join from phones or laptops, talk over built-in voice, and play **Last Card** (Uno-style).
+Up to 15 friends join from phones or laptops and play **Last Card** (Uno-style), **Snakes & Ladders** or **Hand Cricket**.
+Built-in voice arrives in v2; until then people keep a call open alongside.
 After each round there's a results screen, then another deal. No sign-up, nothing to install.
 
 **Screen flow:** Home → Pick a game → Lobby → Table → Results, with Results looping back to
@@ -270,7 +271,11 @@ type Card = { id: string; color: Color | 'wild'; value: '0'|'1'|'2'|'3'|'4'|'5'|
 
 ---
 
-## 7. Voice flow (LiveKit)
+## 7. Voice flow (LiveKit) — v2, not in v1
+
+> Held back from v1 deliberately: it needs HTTPS and two devices on separate
+> networks to test, and LiveKit's free allowance is roughly one and a half
+> game nights for a full room. The spec below still stands for when it lands.
 
 1. Player is in a room. Voice is off until they tap **Join voice** (browsers block audio and mic without a tap, especially iOS Safari).
 2. Client calls `POST /api/voice-token` with `{ code, playerId, secret }`.

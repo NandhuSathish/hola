@@ -81,6 +81,8 @@ export function PlayingCard({ card, playable, dimmed, onClick, style }: Props) {
       type="button"
       className={className}
       style={{ ...style, ...colourStyle(card) }}
+      // lets the table find this card's position when it flies to the pile
+      data-card-id={card.id}
       onClick={onClick}
       aria-label={(playable ? 'Play ' : 'Cannot play ') + describeCard(card)}
     >

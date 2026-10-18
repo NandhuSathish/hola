@@ -44,6 +44,8 @@ export function RoomScreen({ room, code }: Props) {
       me={room.me ?? ''}
       players={view.players}
       send={room.sendAction}
+      events={room.log}
+      eventSeq={room.logSeq}
     />
   );
 }

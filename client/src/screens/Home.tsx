@@ -28,7 +28,7 @@ export function Home({ room }: Props) {
         </h1>
 
         <p className="tagline">
-          Card nights with your crew. Voice is built in, so just open the link and start talking.
+          Card nights with your crew. Open the link, pick a game, start playing.
         </p>
 
         <section className="sticker panel">

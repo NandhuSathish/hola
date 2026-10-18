@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { Card, Color, LastCardView, PublicPlayer } from '@holla/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Card, Color, GameEvent, LastCardView, PublicPlayer } from '@holla/shared';
 import { CardBack, PlayingCard, describeCard } from './Card';
+import { Confetti, FlyingCard, Stamp, Toast, type FlightPlan } from '../../components/Flourish';
 import './Table.css';
 
 const COLORS: { value: Color; label: string }[] = [
@@ -10,17 +11,36 @@ const COLORS: { value: Color; label: string }[] = [
   { value: 'blue', label: 'Blue' },
 ];
 
+/** Events worth interrupting someone for. Everything else just joins the log. */
+const SHOUTY = new Set(['reverse', 'stack', 'catch', 'swap', 'rotate', 'timeout', 'skip']);
+
 export type TableProps = {
   view: LastCardView;
   me: string;
   players: PublicPlayer[];
   send: (action: unknown) => void;
+  events: GameEvent[];
+  eventSeq: number;
 };
 
-export function LastCardTable({ view, me, players, send }: TableProps) {
-  /** Set while a wild waits for its colour, or a 7 waits for a swap target. */
+export function LastCardTable({ view, me, players, send, events, eventSeq }: TableProps) {
   const [pendingWild, setPendingWild] = useState<Card | null>(null);
   const [pendingSwap, setPendingSwap] = useState<Card | null>(null);
+  const [flight, setFlight] = useState<FlightPlan | null>(null);
+  const [stampAt, setStampAt] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const flightId = useRef(0);
+
+  // Stable, so the memoised FlyingCard is not re-rendered by the turn ring.
+  const clearFlight = useCallback(() => setFlight(null), []);
+
+  // animationend is the normal path; this is the safety net if the element is
+  // unmounted mid-flight or the event is missed.
+  useEffect(() => {
+    if (!flight) return;
+    const timer = setTimeout(() => setFlight(null), 700);
+    return () => clearTimeout(timer);
+  }, [flight]);
 
   const myTurn = view.turnPlayerId === me;
   const playable = new Set(view.me.playableIds);
@@ -29,6 +49,41 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
 
   const mySeat = view.seats.find((s) => s.playerId === me);
   const others = view.seats.filter((s) => s.playerId !== me);
+
+  const progress = useTurnProgress(view.turnPlayerId, view.turnEndsAt);
+
+  // The newest event drives the toast, and a shout drives the stamp.
+  const newest = events[0];
+  useEffect(() => {
+    if (!newest || eventSeq === 0) return;
+    const who = newest.playerId ? nameOf(newest.playerId) : '';
+    if (newest.kind === 'shout') {
+      setStampAt(Date.now());
+      setToast(null);
+      return;
+    }
+    setToast(SHOUTY.has(newest.kind) ? `${who} ${newest.text}`.trim() : null);
+    // nameOf depends on players, which is stable enough for a toast
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventSeq]);
+
+  /** Sends a play, and sets the card flying from wherever it currently sits. */
+  function sendPlay(card: Card, extra: Record<string, unknown> = {}) {
+    // Both rectangles are read now, while the card is still in the hand and
+    // the pile is where the player can see it.
+    const node = document.querySelector(`[data-card-id="${card.id}"]`);
+    const pile = document.querySelector('.discard-wrap');
+    if (node && pile) {
+      flightId.current += 1;
+      setFlight({
+        from: node.getBoundingClientRect(),
+        to: pile.getBoundingClientRect(),
+        node: <PlayingCard card={card} />,
+        id: flightId.current,
+      });
+    }
+    send({ type: 'play', cardId: card.id, ...extra });
+  }
 
   function play(card: Card) {
     if (!playable.has(card.id)) return;
@@ -40,7 +95,7 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
       setPendingSwap(card);
       return;
     }
-    send({ type: 'play', cardId: card.id });
+    sendPlay(card);
   }
 
   const banner = (() => {
@@ -62,24 +117,30 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
         </div>
       </div>
 
+      <ul className="log" aria-live="polite" aria-label="Recent moves">
+        {events.slice(0, 5).map((e, i) => (
+          <li key={`${eventSeq}-${i}`}>
+            {e.playerId ? `${nameOf(e.playerId)} ` : ''}
+            {e.text}
+          </li>
+        ))}
+      </ul>
+
       <div className="arena">
-        {/* Everyone else sits around the table; you sit at the bottom, by your hand. */}
         <ul className="seats">
           {others.map((seat, i) => {
             const angle = Math.PI / 2 + ((i + 1) * 2 * Math.PI) / (others.length + 1);
+            const theirTurn = seat.playerId === view.turnPlayerId;
             return (
               <li
                 key={seat.playerId}
-                className={[
-                  'seat',
-                  seat.playerId === view.turnPlayerId ? 'turn' : '',
-                  seat.connected ? '' : 'away',
-                ]
+                className={['seat', theirTurn ? 'turn' : '', seat.connected ? '' : 'away']
                   .filter(Boolean)
                   .join(' ')}
                 style={{
                   left: `${50 + 46 * Math.cos(angle)}%`,
                   top: `${50 + 45 * Math.sin(angle)}%`,
+                  ...(theirTurn ? ({ ['--t']: String(progress) } as React.CSSProperties) : {}),
                 }}
               >
                 <div className="seat-avatar">
@@ -112,15 +173,7 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
             aria-hidden="true"
           >
             <g>
-              <circle
-                cx="100"
-                cy="100"
-                r="88"
-                fill="none"
-                stroke="rgba(255,244,220,.35)"
-                strokeWidth="3"
-                strokeDasharray="10 9"
-              />
+              <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,244,220,.35)" strokeWidth="3" strokeDasharray="10 9" />
               <polygon points="93,4 109,12 93,20" fill="var(--paper)" stroke="var(--line)" strokeWidth="2" />
               <polygon points="107,180 91,188 107,196" fill="var(--paper)" stroke="var(--line)" strokeWidth="2" />
             </g>
@@ -136,14 +189,14 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
                 aria-label="Draw a card"
               >
                 <CardBack />
-                <CardBack style={{ position: 'absolute', inset: 0, transform: 'translate(-4px, 4px) rotate(-5deg)', zIndex: -1 }} />
               </button>
               <span className="pile-label">Draw</span>
             </div>
 
             <div className="pile discard-pile">
               <div className="discard-wrap" style={{ ['--cur' as string]: `var(--${view.currentColor})` }}>
-                <PlayingCard card={view.topCard} />
+                {/* keyed on the card, so a new top card replays the pop */}
+                <PlayingCard key={view.topCard.id} card={view.topCard} />
               </div>
               <span className="color-pill">
                 <i style={{ background: `var(--${view.currentColor})` }} />
@@ -155,7 +208,10 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
       </div>
 
       <div className="hand-area">
-        <div className={`me${myTurn ? ' turn' : ''}`}>
+        <div
+          className={`me${myTurn ? ' turn' : ''}`}
+          style={myTurn ? ({ ['--t']: String(progress) } as React.CSSProperties) : undefined}
+        >
           <div className="seat-avatar">
             <span className="av">{avatarOf(me)}</span>
             {mySeat && (
@@ -170,9 +226,6 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
         <div className="hand" aria-label="Your cards">
           {view.me.hand.map((card, i) => {
             const can = myTurn && playable.has(card.id);
-            // Only dim on your own turn, where "you cannot play this" is real
-            // information. On someone else's turn nothing is playable, so
-            // greying the whole hand would just make the table look dead.
             return (
               <PlayingCard
                 key={card.id}
@@ -193,7 +246,7 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
         <div className="hand-actions">
           <button
             type="button"
-            className="shout"
+            className={`shout${!view.me.shouted && view.me.hand.length <= 2 ? ' ready' : ''}`}
             disabled={view.me.shouted || view.me.hand.length > 2}
             onClick={() => send({ type: 'shout' })}
           >
@@ -210,6 +263,10 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
         </div>
       </div>
 
+      <FlyingCard plan={flight} onDone={clearFlight} />
+      <Toast message={toast} />
+      <Stamp text="Last card!" at={stampAt} />
+
       {pendingWild && (
         <div className="chooser" role="dialog" aria-label="Pick a colour">
           <div className="sticker chooser-card">
@@ -222,7 +279,7 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
                   type="button"
                   style={{ background: `var(--${c.value})` }}
                   onClick={() => {
-                    send({ type: 'play', cardId: pendingWild.id, chosenColor: c.value });
+                    sendPlay(pendingWild, { chosenColor: c.value });
                     setPendingWild(null);
                   }}
                 >
@@ -249,7 +306,7 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
                   type="button"
                   className="btn"
                   onClick={() => {
-                    send({ type: 'play', cardId: pendingSwap.id, swapWith: seat.playerId });
+                    sendPlay(pendingSwap, { swapWith: seat.playerId });
                     setPendingSwap(null);
                   }}
                 >
@@ -262,7 +319,7 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
               className="btn small"
               onClick={() => {
                 // 7-0 may simply be switched off, in which case it is a plain 7.
-                send({ type: 'play', cardId: pendingSwap.id });
+                sendPlay(pendingSwap);
                 setPendingSwap(null);
               }}
             >
@@ -274,3 +331,41 @@ export function LastCardTable({ view, me, players, send }: TableProps) {
     </div>
   );
 }
+
+/**
+ * How much of the current turn is left, 0-100, for the ring around the avatar.
+ *
+ * The server deliberately does not broadcast a countdown (REFERENCE.md section
+ * 6) — it sends `turnEndsAt` once and the clock runs here. The turn's length is
+ * inferred from when this client first saw the turn change, so no extra state
+ * has to travel.
+ */
+function useTurnProgress(turnPlayerId: string, turnEndsAt: number | null): number {
+  const [progress, setProgress] = useState(100);
+  const startedAt = useRef(Date.now());
+  const lastTurn = useRef(turnPlayerId);
+
+  if (lastTurn.current !== turnPlayerId) {
+    lastTurn.current = turnPlayerId;
+    startedAt.current = Date.now();
+  }
+
+  useEffect(() => {
+    if (turnEndsAt === null) {
+      setProgress(100);
+      return;
+    }
+    const total = Math.max(1, turnEndsAt - startedAt.current);
+    const tick = () => {
+      const left = turnEndsAt - Date.now();
+      setProgress(Math.max(0, Math.min(100, (left / total) * 100)));
+    };
+    tick();
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
+  }, [turnPlayerId, turnEndsAt]);
+
+  return Math.round(progress);
+}
+
+export { Confetti };

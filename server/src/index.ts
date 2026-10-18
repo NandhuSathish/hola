@@ -62,6 +62,18 @@ function sendView(room: Room, playerId: string): void {
   if (view !== null) io.to(playerRoom(playerId)).emit('game:view', view);
 }
 
+/**
+ * Everything a client needs after arriving or coming back: its own view, and
+ * the round's result if it walked in on the results screen. Without the
+ * result, a refresh there would show an empty scoreboard.
+ */
+function catchUp(room: Room, playerId: string): void {
+  sendView(room, playerId);
+  if (room.phase !== 'results') return;
+  const result = runner.result(room);
+  if (result) io.to(playerRoom(playerId)).emit('game:result', { result, totals: room.totals });
+}
+
 /** Everyone gets their own view; nobody gets a broadcast of the whole state. */
 function sendAllViews(room: Room): void {
   for (const player of room.players) sendView(room, player.id);
@@ -138,7 +150,7 @@ io.on('connection', (socket) => {
     // Walking in on a round in progress: hand over the spectator view at once,
     // otherwise this client sits on an empty table until someone else moves.
     const joined = store.get(res.value.code);
-    if (joined) sendView(joined, res.value.playerId);
+    if (joined) catchUp(joined, res.value.playerId);
   });
 
   socket.on('room:rejoin', (input, ack) => {
@@ -156,7 +168,7 @@ io.on('connection', (socket) => {
     ack({ ok: true });
     broadcast(res.value.code);
     // A refreshed client has no game state, so hand it straight back.
-    sendView(res.value, input.playerId);
+    catchUp(res.value, input.playerId);
   });
 
   socket.on('room:leave', (ack) => {

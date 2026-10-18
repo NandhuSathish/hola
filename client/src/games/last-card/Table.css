@@ -57,6 +57,27 @@
   font-weight: 900;
 }
 
+.log {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+
+.log li {
+  background: rgba(255, 244, 220, 0.08);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.log li:first-child {
+  background: rgba(255, 244, 220, 0.18);
+}
+
 /* ---------- the table itself ---------- */
 .arena {
   position: relative;
@@ -142,6 +163,15 @@
 .draw-btn:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.discard-wrap .card {
+  animation: card-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes card-pop {
+  from { transform: scale(0.6) rotate(-14deg); }
+  to { transform: none; }
 }
 
 .discard-wrap {
@@ -252,8 +282,11 @@
   position: absolute;
   inset: -9px;
   border-radius: 50%;
-  background: var(--sun);
+  /* --t counts down from 100 while the turn timer runs; with the timer off it
+     simply stays at 100 and reads as a plain ring. */
+  background: conic-gradient(var(--sun) calc(var(--t, 100) * 1%), rgba(255, 194, 26, 0.22) 0);
   z-index: -1;
+  transition: background 0.25s linear;
 }
 
 .seat.turn .name,
@@ -463,6 +496,15 @@
   padding: 10px;
 }
 
+.shout.ready {
+  animation: shout-wobble 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes shout-wobble {
+  from { transform: rotate(-10deg) scale(1); }
+  to { transform: rotate(6deg) scale(1.06); }
+}
+
 .shout:disabled {
   filter: saturate(0.35);
   opacity: 0.6;
@@ -531,6 +573,8 @@
   }
   .banner { font-size: 18px; padding: 10px 14px; }
   .table-meta { font-size: 12.5px; }
+  .log { font-size: 12.5px; gap: 6px; min-height: 0; margin-top: 8px; }
+  .log li:nth-child(n + 3) { display: none; }
 
   .arena {
     height: auto;
@@ -622,5 +666,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dir g { animation: none; }
+  .dir g,
+  .discard-wrap .card,
+  .shout.ready {
+    animation: none;
+  }
+  .hand .card,
+  .discard-wrap {
+    transition: none;
+  }
+  .seat.turn .av::before,
+  .me.turn .av::before {
+    transition: none;
+  }
 }

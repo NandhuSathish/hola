@@ -17,6 +17,16 @@ export const catalogue: GameInfo[] = [
     status: 'ready',
   },
   {
+    id: 'hand-cricket',
+    name: 'Hand Cricket',
+    tagline:
+      'Two of you throw a number at the same time. Match it and you are out. Everyone else guesses along for points.',
+    minPlayers: 2,
+    maxPlayers: 15,
+    estimate: '~10 min an innings',
+    status: 'soon',
+  },
+  {
     id: 'snakes-ladders',
     name: 'Snakes & Ladders',
     tagline:

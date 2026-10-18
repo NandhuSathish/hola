@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { PublicPlayer } from '@holla/shared';
+import type { GameEvent, PublicPlayer } from '@holla/shared';
 
 export type SettingsProps = {
   settings: unknown;
@@ -14,6 +14,10 @@ export type TableProps = {
   me: string;
   players: PublicPlayer[];
   send: (action: unknown) => void;
+  /** Newest first, already trimmed. Feeds the log, toasts and the stamp. */
+  events: GameEvent[];
+  /** Bumped on every batch, so a repeat of the same text still fires. */
+  eventSeq: number;
 };
 
 export type GameUI = {

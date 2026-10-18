@@ -14,6 +14,8 @@ type State = {
   game: LastCardView | null;
   /** Most recent first, trimmed — the table only shows a few. */
   log: GameEvent[];
+  /** Counts batches, so repeating the same event still reads as new. */
+  logSeq: number;
   result: { result: RoundResult; totals: Record<string, number> } | null;
 };
 
@@ -26,6 +28,7 @@ export function useRoom(codeFromUrl: string | null) {
     busy: false,
     game: null,
     log: [],
+    logSeq: 0,
     result: null,
   });
 
@@ -75,7 +78,11 @@ export function useRoom(codeFromUrl: string | null) {
     };
     const onView = (view: unknown) => patch({ game: view as LastCardView });
     const onEvents = (events: GameEvent[]) =>
-      setState((prev) => ({ ...prev, log: [...events].reverse().concat(prev.log).slice(0, 6) }));
+      setState((prev) => ({
+        ...prev,
+        log: [...events].reverse().concat(prev.log).slice(0, 6),
+        logSeq: prev.logSeq + 1,
+      }));
     const onResult = (payload: { result: RoundResult; totals: Record<string, number> }) =>
       patch({ result: payload });
     const onClosed = (payload: { reason: string }) => {
