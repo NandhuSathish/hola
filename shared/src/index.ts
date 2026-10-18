@@ -83,6 +83,22 @@ export type {
 export { snakesLadders } from './games/snakes-ladders/index.js';
 export type { CardId, MysteryCard } from './games/snakes-ladders/cards.js';
 export { MYSTERY_DECK, cardById, drawCard } from './games/snakes-ladders/cards.js';
+export type {
+  CrowdPrompt,
+  Prompt,
+  StandoffPrompt,
+  VoteEffect,
+  VoteOption,
+} from './games/snakes-ladders/prompts.js';
+export {
+  CROWD_VOTE_MS,
+  STANDOFF_MS,
+  STANDOFF_PERIOD_MS,
+  VOTE_PAIRS,
+  inZone,
+  needleAt,
+  tallyVotes,
+} from './games/snakes-ladders/prompts.js';
 export {
   COLUMNS,
   CROWD_TILES,

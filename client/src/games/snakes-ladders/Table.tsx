@@ -1,6 +1,7 @@
 import type { GameEvent, PublicPlayer, SnakesView } from '@holla/shared';
 import { LAST_TILE, cardById } from '@holla/shared';
 import { SnakesBoard } from './Board';
+import { SnakesPrompt } from './Prompt';
 import { Toast } from '../../components/Flourish';
 import { useTurnCountdown } from '../../lib/useTurnCountdown';
 import './Table.css';
@@ -29,11 +30,15 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
   const myTurn = view.turnPlayerId === me;
   const toast = useToastFromEvents(events, eventSeq, nameOf);
 
-  const banner = myTurn
-    ? view.me.rollsLeft < 3
-      ? 'Six! Roll again'
-      : 'Your turn — roll'
-    : `${nameOf(view.turnPlayerId)} is rolling…`;
+  const banner = view.prompt
+    ? view.awaitingMe
+      ? 'Your call…'
+      : 'Waiting on the room…'
+    : myTurn
+      ? view.me.rollsLeft < 3
+        ? 'Six! Roll again'
+        : 'Your turn — roll'
+      : `${nameOf(view.turnPlayerId)} is rolling…`;
 
   return (
     <div className="sl-screen">
@@ -129,6 +134,10 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
         </aside>
       </div>
 
+      {view.prompt && (
+        <SnakesPrompt prompt={view.prompt} me={me} players={players} send={send} />
+      )}
+
       <Toast message={toast} />
     </div>
   );
@@ -153,6 +162,10 @@ const LOUD = new Set([
   'quake',
   'swap',
   'noodle',
+  'standoff',
+  'crowd',
+  'crowdResult',
+  'charmed',
 ]);
 
 function useToastFromEvents(

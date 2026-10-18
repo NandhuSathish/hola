@@ -63,6 +63,7 @@ function table(opts: {
       stats: { ladders: 0, bites: 0, boxes: 0, best: 0 },
     })),
     snakes: SNAKES.map(([head, tail]) => ({ head, tail, sleep: 0, boss: false })),
+    prompt: null,
     turnIndex: opts.turnIndex ?? 0,
     rollsThisTurn: 0,
     turnStartedAt: 0,
@@ -71,7 +72,14 @@ function table(opts: {
     winnerId: null,
     lastTurn: null,
     turnSeq: 0,
-    settings: { ...SNAKES_DEFAULTS, mysteryBoxes: false, noodle: false, ...opts.settings },
+    settings: {
+      ...SNAKES_DEFAULTS,
+      mysteryBoxes: false,
+      noodle: false,
+      standoff: false,
+      crowdVote: false,
+      ...opts.settings,
+    },
   };
 }
 
@@ -422,6 +430,33 @@ describe('players leaving', () => {
   });
 });
 
+
+/**
+ * Drives one step of a game: answers whatever the table is waiting on, or
+ * rolls. Returns the new state, or null when there is nothing legal to do.
+ */
+function step(state: SnakesState, now: number, rng: () => number): SnakesState | null {
+  const prompt = state.prompt;
+
+  if (prompt) {
+    const who = prompt.awaiting[0];
+    if (!who) return null;
+    const action =
+      prompt.detail.kind === 'standoff'
+        ? ({ type: 'charm', promptId: prompt.id } as const)
+        : ({ type: 'vote', promptId: prompt.id, option: (rng() < 0.5 ? 0 : 1) as 0 | 1 } as const);
+    const res = onAction(state, who, action, { now, rng });
+    if (!res.ok) throw new Error('refused a legal prompt answer: ' + res.error);
+    return res.state;
+  }
+
+  const who = state.seats[state.turnIndex]?.id;
+  if (!who) return null;
+  const res = onAction(state, who, { type: 'roll' }, { now, rng });
+  if (!res.ok) throw new Error('refused a legal roll: ' + res.error);
+  return res.state;
+}
+
 // ---------------------------------------------------------------- soak
 
 describe('a whole game', () => {
@@ -437,11 +472,9 @@ describe('a whole game', () => {
       let turns = 0;
       while (!state.finished && turns < 5000) {
         turns++;
-        const who = state.seats[state.turnIndex]?.id;
-        if (!who) break;
-        const res = onAction(state, who, { type: 'roll' }, { now: turns * 1000, rng });
-        if (!res.ok) throw new Error(`seed ${seed} refused a legal roll: ${res.error}`);
-        state = res.state;
+        const next = step(state, turns * 1000, rng);
+        if (!next) break;
+        state = next;
       }
 
       expect(state.finished).toBe(true);
@@ -623,10 +656,10 @@ describe('Noodle the wanderer', () => {
     );
     const startHead = state.snakes.find((s) => s.boss)?.head;
 
-    for (let i = 0; i < 24 && !state.finished; i++) {
-      const who = state.seats[state.turnIndex]?.id;
-      if (!who) break;
-      state = ok(onAction(state, who, { type: 'roll' }, { now: i * 1000, rng }));
+    for (let i = 0; i < 40 && !state.finished; i++) {
+      const next = step(state, i * 1000, rng);
+      if (!next) break;
+      state = next;
     }
 
     const noodle = state.snakes.find((s) => s.boss);
@@ -652,11 +685,9 @@ describe('a whole game with every twist on', () => {
       let turns = 0;
       while (!state.finished && turns < 8000) {
         turns++;
-        const who = state.seats[state.turnIndex]?.id;
-        if (!who) break;
-        const res = onAction(state, who, { type: 'roll' }, { now: turns * 1000, rng });
-        if (!res.ok) throw new Error(`seed ${seed} refused a legal roll: ${res.error}`);
-        state = res.state;
+        const next = step(state, turns * 1000, rng);
+        if (!next) break;
+        state = next;
         for (const seat of state.seats) {
           expect(seat.pos).toBeGreaterThanOrEqual(1);
           expect(seat.pos).toBeLessThanOrEqual(LAST_TILE);
@@ -666,5 +697,250 @@ describe('a whole game with every twist on', () => {
       expect(state.finished).toBe(true);
       expect(state.seats.find((s) => s.id === state.winnerId)?.pos).toBe(LAST_TILE);
     }
+  });
+});
+
+// ---------------------------------------------------------------- standoff
+
+/**
+ * A moment when the needle reads `target`. For t in [0,1] the sweep is linear,
+ * so this is exact — the same arithmetic the server judges with.
+ */
+const whenNeedleReads = (prompt: { startedAt: number }, periodMs: number, target: number) =>
+  prompt.startedAt + (target / 100) * periodMs;
+
+/** Walks p0 from 31 onto the snake head at 32. */
+const walkIntoSnake = (state: SnakesState) =>
+  onAction(state, 'p0', { type: 'roll' }, { now: 0, rng: rngSeq(die(1)) });
+
+const standoffOn = { standoff: true, rollAgainOnSix: false } as const;
+
+describe('the snake standoff', () => {
+  it('stops the game and waits on the one player', () => {
+    const state = table({ positions: [31, 1], settings: standoffOn });
+    const next = ok(walkIntoSnake(state));
+
+    expect(next.prompt).not.toBeNull();
+    expect(next.prompt?.detail.kind).toBe('standoff');
+    expect(next.prompt?.awaiting).toEqual(['p0']);
+    expect(next.seats[0]?.pos).toBe(32); // not swallowed yet
+    expect(next.turnIndex).toBe(0); // and the turn has not moved on
+  });
+
+  it('refuses a roll from anyone while it waits', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    expect(err(onAction(state, 'p0', { type: 'roll' }, ctx()))).toBe(
+      'Hold on, the table is waiting on someone.',
+    );
+    expect(err(onAction(state, 'p1', { type: 'roll' }, ctx()))).toBe(
+      'Hold on, the table is waiting on someone.',
+    );
+  });
+
+  it('escapes when the needle stops inside the zone', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    const prompt = state.prompt!;
+    const detail = prompt.detail as { zoneStart: number; zoneWidth: number; periodMs: number };
+    const middle = detail.zoneStart + detail.zoneWidth / 2;
+
+    const charmed = ok(
+      onAction(
+        state,
+        'p0',
+        { type: 'charm', promptId: prompt.id },
+        { now: whenNeedleReads(prompt, detail.periodMs, middle), rng: seeded() },
+      ),
+    );
+
+    expect(charmed.seats[0]?.pos).toBe(32); // stayed put
+    expect(charmed.prompt).toBeNull();
+    expect(charmed.snakes.find((s) => s.head === 32)?.sleep).toBeGreaterThan(0);
+    expect(charmed.lastTurn?.steps.some((s) => s.kind === 'charmed')).toBe(true);
+    expect(charmed.turnIndex).toBe(1); // and the turn moved on
+  });
+
+  it('gets swallowed when the needle stops outside it', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    const prompt = state.prompt!;
+    const detail = prompt.detail as { zoneStart: number; periodMs: number };
+
+    // the zone never starts below 18, so reading 0 is always a miss
+    const missed = ok(
+      onAction(
+        state,
+        'p0',
+        { type: 'charm', promptId: prompt.id },
+        { now: whenNeedleReads(prompt, detail.periodMs, 0), rng: seeded() },
+      ),
+    );
+
+    expect(missed.seats[0]?.pos).toBe(10); // the snake on 32 drops to 10
+    expect(missed.prompt).toBeNull();
+    expect(missed.seats[0]?.stats.bites).toBe(1);
+  });
+
+  it('refuses a stale prompt id, and anyone it is not waiting on', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    expect(err(onAction(state, 'p0', { type: 'charm', promptId: 'nope' }, ctx()))).toBe(
+      'That moment has passed.',
+    );
+    expect(err(onAction(state, 'p1', { type: 'charm', promptId: state.prompt!.id }, ctx()))).toBe(
+      'This one is not yours.',
+    );
+  });
+
+  it('lets the snake win if nobody presses in time', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    const prompt = state.prompt!;
+
+    expect(onTick(state, { now: prompt.endsAt - 1, rng: seeded() })).toBeNull();
+    const ticked = onTick(state, { now: prompt.endsAt, rng: seeded() });
+
+    expect(ticked).not.toBeNull();
+    expect(ticked!.state.seats[0]?.pos).toBe(10);
+    expect(ticked!.state.prompt).toBeNull();
+  });
+
+  it('never raises one when the rule is off', () => {
+    const state = table({ positions: [31, 1], settings: { standoff: false, rollAgainOnSix: false } });
+    const next = ok(walkIntoSnake(state));
+    expect(next.prompt).toBeNull();
+    expect(next.seats[0]?.pos).toBe(10);
+  });
+});
+
+// ---------------------------------------------------------------- crowd vote
+
+/** Walks p0 from 23 onto the megaphone tile at 24. */
+const walkIntoCrowd = (state: SnakesState) =>
+  onAction(state, 'p0', { type: 'roll' }, { now: 0, rng: rngSeq(die(1)) });
+
+const crowdOn = { crowdVote: true, rollAgainOnSix: false, standoff: false } as const;
+
+describe('the crowd vote', () => {
+  it('waits on everyone except the subject', () => {
+    const state = table({ positions: [23, 1, 1], settings: crowdOn });
+    const next = ok(walkIntoCrowd(state));
+
+    expect(next.prompt?.detail.kind).toBe('crowd');
+    expect(next.prompt?.awaiting.sort()).toEqual(['p1', 'p2']);
+    const detail = next.prompt!.detail as unknown as { subjectId: string; options: unknown[] };
+    expect(detail.subjectId).toBe('p0');
+    expect(detail.options).toHaveLength(2);
+  });
+
+  it('will not let you vote on your own fate', () => {
+    const state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    expect(
+      err(onAction(state, 'p0', { type: 'vote', promptId: state.prompt!.id, option: 0 }, ctx())),
+    ).toBe('You cannot vote on your own fate.');
+  });
+
+  it('counts one vote each', () => {
+    let state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    const id = state.prompt!.id;
+    state = ok(onAction(state, 'p1', { type: 'vote', promptId: id, option: 0 }, ctx()));
+    expect(
+      err(onAction(state, 'p1', { type: 'vote', promptId: id, option: 1 }, ctx())),
+    ).toBe('You already voted.');
+  });
+
+  it('resolves as soon as everyone has voted', () => {
+    let state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    const id = state.prompt!.id;
+    state = ok(onAction(state, 'p1', { type: 'vote', promptId: id, option: 0 }, ctx()));
+    expect(state.prompt).not.toBeNull(); // still waiting on p2
+
+    state = ok(onAction(state, 'p2', { type: 'vote', promptId: id, option: 0 }, ctx()));
+    expect(state.prompt).toBeNull();
+    expect(state.turnIndex).toBe(1); // the turn moved on
+  });
+
+  it('applies what the crowd chose', () => {
+    let state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    const prompt = state.prompt!;
+    const detail = prompt.detail as unknown as { options: { effect: Record<string, unknown> }[] };
+    const id = prompt.id;
+
+    state = ok(onAction(state, 'p1', { type: 'vote', promptId: id, option: 0 }, ctx()));
+    state = ok(onAction(state, 'p2', { type: 'vote', promptId: id, option: 0 }, ctx()));
+
+    const effect = detail.options[0]!.effect;
+    const subject = state.seats[0]!;
+    if (effect['move']) expect(subject.pos).not.toBe(24);
+    if (effect['shield']) expect(subject.shield).toBe(true);
+    if (effect['double']) expect(subject.double).toBe(true);
+    if (effect['freeze']) expect(subject.frozen || state.turnIndex !== 0).toBe(true);
+  });
+
+  it('closes on time with whatever came in', () => {
+    let state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    const prompt = state.prompt!;
+    state = ok(onAction(state, 'p1', { type: 'vote', promptId: prompt.id, option: 1 }, ctx()));
+
+    expect(onTick(state, { now: prompt.endsAt - 1, rng: seeded() })).toBeNull();
+    const ticked = onTick(state, { now: prompt.endsAt, rng: seeded() });
+
+    expect(ticked).not.toBeNull();
+    expect(ticked!.state.prompt).toBeNull();
+  });
+
+  it('never raises one when the rule is off', () => {
+    const state = table({
+      positions: [23, 1, 1],
+      settings: { crowdVote: false, rollAgainOnSix: false, standoff: false },
+    });
+    expect(ok(walkIntoCrowd(state)).prompt).toBeNull();
+  });
+
+  it('refuses a junk option', () => {
+    const state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    const id = state.prompt!.id;
+    for (const bad of [2, -1, '0', null, undefined]) {
+      expect(onAction(state, 'p1', { type: 'vote', promptId: id, option: bad } as never, ctx()).ok).toBe(
+        false,
+      );
+    }
+  });
+});
+
+describe('leaving mid-prompt', () => {
+  it('drops a standoff whose player walked out', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1, 1], settings: standoffOn })));
+    expect(state.prompt).not.toBeNull();
+    expect(onPlayerLeft(state, 'p0').prompt).toBeNull();
+  });
+
+  it('drops a vote whose subject walked out', () => {
+    const state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    expect(onPlayerLeft(state, 'p0').prompt).toBeNull();
+  });
+
+  it('stops waiting on a voter who walked out', () => {
+    const state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    const after = onPlayerLeft(state, 'p1');
+    expect(after.prompt?.awaiting).not.toContain('p1');
+  });
+});
+
+describe('views during a prompt', () => {
+  it('tells only the people being waited on', () => {
+    const state = ok(walkIntoCrowd(table({ positions: [23, 1, 1], settings: crowdOn })));
+    expect(getPlayerView(state, 'p0').awaitingMe).toBe(false);
+    expect(getPlayerView(state, 'p1').awaitingMe).toBe(true);
+    expect(getPlayerView(state, 'p2').awaitingMe).toBe(true);
+  });
+
+  it('stops offering a roll while the table waits', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    expect(getPlayerView(state, 'p0').me.canRoll).toBe(false);
+    expect(getPlayerView(state, 'p1').me.canRoll).toBe(false);
+  });
+
+  it('carries the prompt so the client can draw it', () => {
+    const state = ok(walkIntoSnake(table({ positions: [31, 1], settings: standoffOn })));
+    const view = getPlayerView(state, 'p0');
+    expect(view.prompt?.detail.kind).toBe('standoff');
+    expect(view.prompt?.endsAt).toBeGreaterThan(view.prompt!.startedAt);
   });
 });

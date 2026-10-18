@@ -29,6 +29,16 @@ const RULES: { key: keyof SnakesSettings; title: string; blurb: string }[] = [
     title: 'Noodle the wanderer',
     blurb: 'A crowned snake that slithers somewhere new every few rounds.',
   },
+  {
+    key: 'standoff',
+    title: 'Snake standoff',
+    blurb: 'One chance to charm a snake: stop the needle in the green.',
+  },
+  {
+    key: 'crowdVote',
+    title: 'Crowd choice',
+    blurb: 'Land on a megaphone and everyone else votes on your fate.',
+  },
 ];
 
 /** Snakes & Ladders house rules. The lobby renders whichever game is chosen. */
@@ -75,9 +85,7 @@ export function SnakesSettingsPanel({ settings, canEdit, onChange }: SettingsPro
         </div>
       </div>
 
-      <p className="form-note" style={{ marginTop: 10 }}>
-        The snake standoff and the crowd vote arrive in the next update.
-      </p>
+
     </>
   );
 }

@@ -1,7 +1,13 @@
 import type { CardId } from './cards.js';
+import type { Prompt } from './prompts.js';
 import type { SnakesSettings } from './settings.js';
 
-export type SnakesAction = { type: 'roll' };
+export type SnakesAction =
+  | { type: 'roll' }
+  /** Stop the needle during a snake standoff. */
+  | { type: 'charm'; promptId: string }
+  /** Vote on someone else's fate at a megaphone tile. */
+  | { type: 'vote'; promptId: string; option: 0 | 1 };
 
 /**
  * One leg of a move, in the order it happened. The server resolves a whole
@@ -20,7 +26,9 @@ export type MoveStep =
   /** Rocket boots or a banana peel: a glide rather than a walk. */
   | { kind: 'jump'; from: number; to: number }
   /** Traded places with someone. */
-  | { kind: 'swap'; withPlayerId: string; from: number; to: number };
+  | { kind: 'swap'; withPlayerId: string; from: number; to: number }
+  /** Charmed the snake and walked away. */
+  | { kind: 'charmed'; tile: number };
 
 /** Everything the renderer needs to replay the last roll. */
 export type LastTurn = {
@@ -62,6 +70,8 @@ export type SnakesSeat = {
 
 export type SnakesState = {
   seats: SnakesSeat[];
+  /** Set while the game is waiting on people; the turn does not advance. */
+  prompt: Prompt | null;
   /** Mutable, because snakes sleep and Noodle relocates. */
   snakes: LiveSnake[];
   turnIndex: number;
@@ -87,6 +97,10 @@ export type SnakesView = {
   };
   /** Sent because they move; the client cannot use the static board data. */
   snakes: LiveSnake[];
+  /** What the game is waiting on, if anything. Null most of the time. */
+  prompt: Prompt | null;
+  /** True when this player is one of the people being waited on. */
+  awaitingMe: boolean;
   seats: {
     playerId: string;
     pos: number;

@@ -9,6 +9,36 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 4c — the snake standoff and the crowd vote
+
+The two twists that stop the game and wait for people. The standoff gives you
+one chance to charm a snake by stopping a needle in the green; the crowd vote
+puts your fate to everyone else within a deadline, majority wins.
+
+Both are the same shape — a set of players, a deadline, a payload to render —
+so they share one **prompt** concept rather than being two bespoke features.
+Hand Cricket's simultaneous play is the same shape again and should reuse it.
+
+The needle is a pure function of elapsed time, so the client draws it and the
+server judges it from the same numbers. Judging happens on the server's clock,
+which nudges it slightly late over a slow connection — acceptable for a party
+game, and unforgeable.
+
+**No new socket events were needed**, contrary to what I expected. The existing
+contract already covered it: `game:action` takes a payload from any player and
+lets the engine decide, `onTick` already resolves deadlines, and per-player
+views carry anything. Rule 4 held for a third phase running.
+
+**Fixed**
+
+- An orphaned prompt deadlocked the game. If the subject left mid-vote, or a
+  standoff timed out with its player gone, the prompt was cleared without
+  handing the turn on, so nobody could roll again.
+
+Verified over sockets: 8 games, 618 rolls and 74 standoffs, where aiming at the
+green escaped and firing at zero got eaten, 37 to 37 — exactly the alternating
+strategy the test drove. 230 tests pass.
+
 ### Phase 4b — Snakes & Ladders twists
 
 The twists from the mock that are plain rules: mystery boxes with the full

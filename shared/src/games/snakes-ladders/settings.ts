@@ -3,9 +3,8 @@ import type { SettingsSpec } from '../types.js';
 export type SnakesTurnTimer = 0 | 20 | 40;
 
 /**
- * The mock offers six twists. These are the ones that are plain rules and fit
- * the existing socket contract. The snake standoff, the crowd vote and
- * shake-to-roll need their own interactions and arrive in 4c.
+ * Every rule twist from the mock. Shake-to-roll is an input style rather than
+ * a rule, so it does not live here.
  */
 export type SnakesSettings = {
   /** Land on 100 exactly, bouncing back off it otherwise. */
@@ -16,6 +15,10 @@ export type SnakesSettings = {
   mysteryBoxes: boolean;
   /** Noodle, the boss snake, relocates every few rounds. */
   noodle: boolean;
+  /** One chance to charm a snake before it swallows you. */
+  standoff: boolean;
+  /** Megaphone tiles put your fate to a vote by everyone else. */
+  crowdVote: boolean;
   /** Seconds. 0 means off; on timeout the server rolls for you. */
   turnTimer: SnakesTurnTimer;
 };
@@ -25,6 +28,8 @@ export const SNAKES_DEFAULTS: SnakesSettings = {
   rollAgainOnSix: true,
   mysteryBoxes: true,
   noodle: true,
+  standoff: true,
+  crowdVote: true,
   turnTimer: 20,
 };
 
@@ -52,6 +57,8 @@ export const snakesSettings: SettingsSpec<SnakesSettings> = {
       rollAgainOnSix: bool(p.rollAgainOnSix, base.rollAgainOnSix),
       mysteryBoxes: bool(p.mysteryBoxes, base.mysteryBoxes),
       noodle: bool(p.noodle, base.noodle),
+      standoff: bool(p.standoff, base.standoff),
+      crowdVote: bool(p.crowdVote, base.crowdVote),
       turnTimer: timer ?? base.turnTimer,
     };
   },

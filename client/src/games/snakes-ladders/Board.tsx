@@ -124,11 +124,15 @@ function stepToken(token: Token, serverTile: number, delta: number, animated: bo
   // A walk is one hop per tile; a jump glides; a bonk or a card is just a beat
   // where the token holds still while the UI says what happened.
   const perLeg =
-    leg.kind === 'walk' ? 0.12 * leg.path.length : leg.kind === 'bonk' || leg.kind === 'card' ? 0.5 : 0.7;
+    leg.kind === 'walk'
+      ? 0.12 * leg.path.length
+      : leg.kind === 'bonk' || leg.kind === 'card' || leg.kind === 'charmed'
+        ? 0.5
+        : 0.7;
   token.t += delta / perLeg;
 
-  if (leg.kind === 'bonk') {
-    // a little recoil off the snake's nose
+  if (leg.kind === 'bonk' || leg.kind === 'charmed') {
+    // a little hop on the spot: a recoil off the nose, or a relieved bounce
     token.hop = Math.sin(Math.min(1, token.t) * Math.PI) * 10;
   } else if (leg.kind === 'card') {
     token.hop = 0;
@@ -161,7 +165,7 @@ function stepToken(token: Token, serverTile: number, delta: number, animated: bo
     if (done) {
       if (done.kind === 'walk') {
         token.fromTile = done.path[done.path.length - 1] ?? token.fromTile;
-      } else if (done.kind === 'bonk') {
+      } else if (done.kind === 'bonk' || done.kind === 'charmed') {
         token.fromTile = done.tile;
       } else if (done.kind !== 'card') {
         token.fromTile = done.to;
