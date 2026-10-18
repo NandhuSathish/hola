@@ -66,7 +66,7 @@ export function Results({ room }: Props) {
                 <thead>
                   <tr>
                     <th>Player</th>
-                    <th className="num">Cards left</th>
+                    <th className="num">Remaining</th>
                     <th className="num">This round</th>
                     <th className="num">Total</th>
                   </tr>

@@ -57,8 +57,12 @@ function table(opts: {
       id: `p${i}`,
       pos,
       present: true,
-      stats: { ladders: 0, bites: 0, best: 0 },
+      shield: false,
+      double: false,
+      frozen: false,
+      stats: { ladders: 0, bites: 0, boxes: 0, best: 0 },
     })),
+    snakes: SNAKES.map(([head, tail]) => ({ head, tail, sleep: 0, boss: false })),
     turnIndex: opts.turnIndex ?? 0,
     rollsThisTurn: 0,
     turnStartedAt: 0,
@@ -67,7 +71,7 @@ function table(opts: {
     winnerId: null,
     lastTurn: null,
     turnSeq: 0,
-    settings: { ...SNAKES_DEFAULTS, ...opts.settings },
+    settings: { ...SNAKES_DEFAULTS, mysteryBoxes: false, noodle: false, ...opts.settings },
   };
 }
 
@@ -424,7 +428,11 @@ describe('a whole game', () => {
   it('finishes from a seeded start without stalling', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const rng = seeded(seed);
-      let state = setup(players(4), { ...SNAKES_DEFAULTS, turnTimer: 0 }, { now: 0, rng });
+      let state = setup(
+        players(4),
+        { ...SNAKES_DEFAULTS, turnTimer: 0, mysteryBoxes: true, noodle: true },
+        { now: 0, rng },
+      );
 
       let turns = 0;
       while (!state.finished && turns < 5000) {
@@ -438,6 +446,224 @@ describe('a whole game', () => {
 
       expect(state.finished).toBe(true);
       expect(state.winnerId).not.toBeNull();
+      expect(state.seats.find((s) => s.id === state.winnerId)?.pos).toBe(LAST_TILE);
+    }
+  });
+});
+
+// ---------------------------------------------------------------- twists
+
+/** Feeds exact rng values in order: first the dice, then any card draw. */
+function rngSeq(...values: number[]): () => number {
+  let i = 0;
+  return () => values[i++] ?? 0.5;
+}
+
+/** rollDie does 1 + floor(r * 6), so aim at the middle of the band. */
+const die = (face: number) => (face - 1) / 6 + 0.01;
+
+/**
+ * drawCard walks the deck subtracting weights, so each card owns a band of the
+ * 0..1 range. These values land in the middle of each band.
+ */
+const card = (id: string): number => {
+  const bands: Record<string, number> = {
+    rocket: 1 / 12,
+    banana: 3 / 12,
+    swap: 4.5 / 12,
+    shield: 6 / 12,
+    double: 8 / 12,
+    freeze: 9.5 / 12,
+    charm: 10.5 / 12,
+    quake: 11.5 / 12,
+  };
+  return bands[id] ?? 0.5;
+};
+
+/** Walks onto the gift tile at 7 from tile 5, drawing the named card. */
+const openBox = (state: SnakesState, who: string, id: string) =>
+  onAction(state, who, { type: 'roll' }, { now: 0, rng: rngSeq(die(2), card(id)) });
+
+const boxes = { mysteryBoxes: true, rollAgainOnSix: false } as const;
+
+describe('mystery boxes', () => {
+  it('draws nothing when the rule is off', () => {
+    const state = table({
+      positions: [5, 1],
+      settings: { mysteryBoxes: false, rollAgainOnSix: false },
+    });
+    const next = ok(openBox(state, 'p0', 'rocket'));
+    expect(next.seats[0]?.pos).toBe(7);
+    expect(next.seats[0]?.stats.boxes).toBe(0);
+  });
+
+  it('counts a box and records the card for the renderer', () => {
+    const state = table({ positions: [5, 1], settings: boxes });
+    const next = ok(openBox(state, 'p0', 'shield'));
+    expect(next.seats[0]?.stats.boxes).toBe(1);
+    expect(next.lastTurn?.steps.some((s) => s.kind === 'card')).toBe(true);
+  });
+
+  it('rocket boots blast ten tiles ahead', () => {
+    const state = table({ positions: [5, 1], settings: boxes });
+    expect(ok(openBox(state, 'p0', 'rocket')).seats[0]?.pos).toBe(17);
+  });
+
+  it('a banana peel slips four back', () => {
+    const state = table({ positions: [5, 1], settings: boxes });
+    expect(ok(openBox(state, 'p0', 'banana')).seats[0]?.pos).toBe(3);
+  });
+
+  it('never pushes anyone below tile 1', () => {
+    const state = table({ positions: [15, 1], settings: boxes });
+    expect(ok(openBox(state, 'p0', 'banana')).seats[0]?.pos).toBeGreaterThanOrEqual(1);
+  });
+
+  it('swap trades places', () => {
+    const state = table({ positions: [5, 60], settings: boxes });
+    const next = ok(openBox(state, 'p0', 'swap'));
+    expect(next.seats[0]?.pos).toBe(60);
+    expect(next.seats[1]?.pos).toBe(7);
+  });
+
+  it('a shield bonks the next snake instead of being eaten', () => {
+    let state = table({ positions: [5, 1], settings: boxes });
+    state = ok(openBox(state, 'p0', 'shield'));
+    expect(state.seats[0]?.shield).toBe(true);
+
+    // park them in front of the snake on 32 and walk on
+    const parked: SnakesState = {
+      ...state,
+      turnIndex: 0,
+      seats: state.seats.map((s, i) => (i === 0 ? { ...s, pos: 31 } : s)),
+    };
+    const bonked = ok(onAction(parked, 'p0', { type: 'roll' }, { now: 0, rng: rngSeq(die(1)) }));
+
+    expect(bonked.seats[0]?.pos).toBe(32); // not dropped to 10
+    expect(bonked.seats[0]?.shield).toBe(false); // and it was used up
+    expect(bonked.lastTurn?.steps.some((s) => s.kind === 'bonk')).toBe(true);
+  });
+
+  it('double dice rolls two on the next turn', () => {
+    let state = table({ positions: [5, 1], settings: boxes });
+    state = ok(openBox(state, 'p0', 'double'));
+    expect(state.seats[0]?.double).toBe(true);
+
+    const mine: SnakesState = { ...state, turnIndex: 0 };
+    const doubled = ok(
+      onAction(mine, 'p0', { type: 'roll' }, { now: 0, rng: rngSeq(die(2), die(3)) }),
+    );
+    expect(doubled.lastTurn?.dice).toHaveLength(2);
+    expect(doubled.seats[0]?.double).toBe(false);
+  });
+
+  it('a freeze ray makes the next player miss a turn', () => {
+    const state = table({ positions: [5, 1, 1], settings: boxes });
+    const next = ok(openBox(state, 'p0', 'freeze'));
+    // p1 was frozen, so the turn skipped straight past them
+    expect(next.seats[1]?.frozen).toBe(false);
+    expect(next.seats[next.turnIndex]?.id).toBe('p2');
+  });
+
+  it('a charmed snake sleeps and stops biting', () => {
+    const state = table({ positions: [5, 1], settings: boxes });
+    const charmed = ok(openBox(state, 'p0', 'charm'));
+    const asleep = charmed.snakes.find((s) => s.sleep > 0);
+    expect(asleep).toBeDefined();
+
+    // stand in front of its head and walk onto it; it should not bite
+    const parked: SnakesState = {
+      ...charmed,
+      turnIndex: 0,
+      seats: charmed.seats.map((s, i) => (i === 0 ? { ...s, pos: asleep!.head - 1 } : s)),
+    };
+    const safe = ok(onAction(parked, 'p0', { type: 'roll' }, { now: 0, rng: rngSeq(die(1)) }));
+    expect(safe.seats[0]?.pos).toBe(asleep!.head);
+  });
+
+  it('an earthquake pushes everyone else back two', () => {
+    const state = table({ positions: [5, 40, 50], settings: boxes });
+    const next = ok(openBox(state, 'p0', 'quake'));
+    expect(next.seats[1]?.pos).toBe(38);
+    expect(next.seats[2]?.pos).toBe(48);
+    expect(next.seats[0]?.pos).toBe(7); // the thrower stays put
+  });
+});
+
+describe('snake sleep', () => {
+  it('wears off as the rounds pass', () => {
+    const base = table({ positions: [1, 1], settings: { rollAgainOnSix: false } });
+    const drowsy: SnakesState = {
+      ...base,
+      snakes: base.snakes.map((s, i) => (i === 0 ? { ...s, sleep: 2 } : s)),
+    };
+
+    // one full lap of the table is one round
+    let state = ok(onAction(drowsy, 'p0', { type: 'roll' }, { now: 0, rng: rngSeq(die(1)) }));
+    state = ok(onAction(state, 'p1', { type: 'roll' }, { now: 0, rng: rngSeq(die(1)) }));
+    expect(state.round).toBe(2);
+    expect(state.snakes[0]?.sleep).toBe(1);
+  });
+});
+
+describe('Noodle the wanderer', () => {
+  it('is only on the board when the rule is on', () => {
+    const off = setup(players(2), { ...SNAKES_DEFAULTS, noodle: false }, ctx());
+    expect(off.snakes.some((s) => s.boss)).toBe(false);
+    const on = setup(players(2), { ...SNAKES_DEFAULTS, noodle: true }, ctx());
+    expect(on.snakes.some((s) => s.boss)).toBe(true);
+  });
+
+  it('relocates to a legal tile as the rounds pass', () => {
+    const rng = seeded(5);
+    let state = setup(
+      players(2),
+      { ...SNAKES_DEFAULTS, noodle: true, mysteryBoxes: false, rollAgainOnSix: false, turnTimer: 0 },
+      { now: 0, rng },
+    );
+    const startHead = state.snakes.find((s) => s.boss)?.head;
+
+    for (let i = 0; i < 24 && !state.finished; i++) {
+      const who = state.seats[state.turnIndex]?.id;
+      if (!who) break;
+      state = ok(onAction(state, who, { type: 'roll' }, { now: i * 1000, rng }));
+    }
+
+    const noodle = state.snakes.find((s) => s.boss);
+    expect(noodle).toBeDefined();
+    expect(noodle!.head).not.toBe(startHead);
+    expect(noodle!.tail).toBeLessThan(noodle!.head);
+    expect(noodle!.tail).toBeGreaterThanOrEqual(2);
+    // it must not squat on anything that already means something
+    expect(new Set<number>([...LADDERS.flat(), LAST_TILE]).has(noodle!.head)).toBe(false);
+  });
+});
+
+describe('a whole game with every twist on', () => {
+  it('finishes from a seeded start without stalling or going off the board', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const rng = seeded(seed);
+      let state = setup(
+        players(4),
+        { ...SNAKES_DEFAULTS, turnTimer: 0, mysteryBoxes: true, noodle: true },
+        { now: 0, rng },
+      );
+
+      let turns = 0;
+      while (!state.finished && turns < 8000) {
+        turns++;
+        const who = state.seats[state.turnIndex]?.id;
+        if (!who) break;
+        const res = onAction(state, who, { type: 'roll' }, { now: turns * 1000, rng });
+        if (!res.ok) throw new Error(`seed ${seed} refused a legal roll: ${res.error}`);
+        state = res.state;
+        for (const seat of state.seats) {
+          expect(seat.pos).toBeGreaterThanOrEqual(1);
+          expect(seat.pos).toBeLessThanOrEqual(LAST_TILE);
+        }
+      }
+
+      expect(state.finished).toBe(true);
       expect(state.seats.find((s) => s.id === state.winnerId)?.pos).toBe(LAST_TILE);
     }
   });

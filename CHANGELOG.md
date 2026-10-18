@@ -9,6 +9,33 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 4b — Snakes & Ladders twists
+
+The twists from the mock that are plain rules: mystery boxes with the full
+8-card weighted deck, the shield that bonks a snake instead of being swallowed,
+snake charming, the freeze ray, the earthquake, and Noodle the wanderer — the
+crowned boss snake that relocates every three rounds onto a tile that means
+nothing else.
+
+Snakes became live state. They sleep and Noodle moves, so the board can no
+longer draw from the static constant and the view carries them. A charmed snake
+is drawn faded with its eyes shut, so it is obvious you can step on it.
+
+**Fixed**
+
+- The shared results table said "Cards left" for a game with no cards. The
+  column is now "Remaining", which reads for both games.
+
+**Known**
+
+- `RoundResult.cardsLeft` is still Last-Card-shaped in the generic interface.
+  It survives here as "tiles from home"; Hand Cricket will force a rename.
+
+Verified over sockets: 6 games and 612 rolls, during which every move step kind
+reached clients and all eight cards were drawn at least once. A 25-seed soak
+with every twist on never put a token off the board. Rule 4 held again — no
+diff in server/src, App.tsx, useRoom.ts or events.ts.
+
 ### Phase 4a — Snakes & Ladders
 
 Second game, and the first proof the registry works: adding it changed no core

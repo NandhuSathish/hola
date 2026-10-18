@@ -4,8 +4,8 @@ import {
   LADDERS,
   LAST_TILE,
   MYSTERY_TILES,
-  SNAKES,
   tileToCell,
+  type LiveSnake,
   type MoveStep,
   type SnakesView,
 } from '@holla/shared';
@@ -74,7 +74,7 @@ export function SnakesBoard({ view, me, colourOf, labelOf }: Props) {
 
       drawTiles(ctx, time, animated);
       for (const [foot, head] of LADDERS) drawLadder(ctx, foot, head);
-      for (const [head, tail] of SNAKES) drawSnake(ctx, head, tail, time, animated);
+      view.snakes.forEach((snake, i) => drawSnake(ctx, snake, i, time, animated));
 
       // make sure every seated player has a token to draw
       for (const seat of view.seats) {
@@ -121,11 +121,18 @@ function stepToken(token: Token, serverTile: number, delta: number, animated: bo
     return;
   }
 
-  // A walk is one hop per tile; a jump is a single glide.
-  const perLeg = leg.kind === 'walk' ? 0.12 * leg.path.length : 0.7;
+  // A walk is one hop per tile; a jump glides; a bonk or a card is just a beat
+  // where the token holds still while the UI says what happened.
+  const perLeg =
+    leg.kind === 'walk' ? 0.12 * leg.path.length : leg.kind === 'bonk' || leg.kind === 'card' ? 0.5 : 0.7;
   token.t += delta / perLeg;
 
-  if (leg.kind === 'walk') {
+  if (leg.kind === 'bonk') {
+    // a little recoil off the snake's nose
+    token.hop = Math.sin(Math.min(1, token.t) * Math.PI) * 10;
+  } else if (leg.kind === 'card') {
+    token.hop = 0;
+  } else if (leg.kind === 'walk') {
     const total = leg.path.length;
     const at = Math.min(total - 1, Math.floor(token.t * total));
     const within = token.t * total - at;
@@ -137,13 +144,14 @@ function stepToken(token: Token, serverTile: number, delta: number, animated: bo
     token.y = lerp(ay, by, Math.min(1, within));
     token.hop = Math.sin(Math.min(1, within) * Math.PI) * 18;
   } else {
+    // ladder, snake, jump and swap all glide from one tile to another
     const [ax, ay] = tileCentre(leg.from);
     const [bx, by] = tileCentre(leg.to);
     const u = ease(Math.min(1, token.t));
     token.x = lerp(ax, bx, u);
     token.y = lerp(ay, by, u);
-    // ladders arc up, snakes slide down
-    token.hop = leg.kind === 'ladder' ? Math.sin(u * Math.PI) * 26 : 0;
+    // ladders and rocket boots arc up, snakes slide down flat
+    token.hop = leg.kind === 'ladder' || leg.kind === 'jump' ? Math.sin(u * Math.PI) * 26 : 0;
   }
 
   if (token.t >= 1) {
@@ -151,8 +159,13 @@ function stepToken(token: Token, serverTile: number, delta: number, animated: bo
     token.t = 0;
     token.hop = 0;
     if (done) {
-      token.fromTile =
-        done.kind === 'walk' ? (done.path[done.path.length - 1] ?? token.fromTile) : done.to;
+      if (done.kind === 'walk') {
+        token.fromTile = done.path[done.path.length - 1] ?? token.fromTile;
+      } else if (done.kind === 'bonk') {
+        token.fromTile = done.tile;
+      } else if (done.kind !== 'card') {
+        token.fromTile = done.to;
+      }
     }
     const [x, y] = tileCentre(token.fromTile);
     token.fromX = x;
@@ -248,24 +261,31 @@ const SNAKE_COLOURS = ['--mint', '--pink', '--sky', '--sun', '--red', '--orange'
 
 function drawSnake(
   ctx: CanvasRenderingContext2D,
-  head: number,
-  tail: number,
+  snake: LiveSnake,
+  index: number,
   time: number,
   animated: boolean,
 ): void {
-  const [hx, hy] = tileCentre(head);
-  const [tx, ty] = tileCentre(tail);
-  const index = SNAKES.findIndex(([h]) => h === head);
-  const colour = token(SNAKE_COLOURS[index % SNAKE_COLOURS.length] ?? '--mint', '#22C97A');
+  const [hx, hy] = tileCentre(snake.head);
+  const [tx, ty] = tileCentre(snake.tail);
+  // Noodle is always purple so it reads as the one that moves
+  const colour = snake.boss
+    ? token('--purple', '#B48CFF')
+    : token(SNAKE_COLOURS[index % SNAKE_COLOURS.length] ?? '--mint', '#22C97A');
   const line = token('--line', '#0E0A2E');
+  const asleep = snake.sleep > 0;
 
   // a slow sine along the body, so the snakes look alive without moving
-  const wobble = animated ? Math.sin(time * 1.3 + index * 1.7) * 26 : 0;
+  const wobble = animated && !asleep ? Math.sin(time * 1.3 + index * 1.7) * 26 : 0;
   const midX = (hx + tx) / 2 + wobble;
   const midY = (hy + ty) / 2;
 
+  // a charmed snake is drawn faded, so you can see it is safe to step on
+  ctx.globalAlpha = asleep ? 0.4 : 1;
+
+  const width = snake.boss ? 32 : 26;
   ctx.lineCap = 'round';
-  for (const [stroke, w] of [[line, 26], [colour, 17]] as const) {
+  for (const [stroke, w] of [[line, width], [colour, width - 9]] as const) {
     ctx.strokeStyle = stroke;
     ctx.lineWidth = w;
     ctx.beginPath();
@@ -274,21 +294,50 @@ function drawSnake(
     ctx.stroke();
   }
 
-  // head
+  const radius = snake.boss ? 23 : 19;
   ctx.fillStyle = colour;
   ctx.strokeStyle = line;
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.arc(hx, hy, 19, 0, Math.PI * 2);
+  ctx.arc(hx, hy, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = line;
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.arc(hx + side * 6, hy - 5, 3.2, 0, Math.PI * 2);
-    ctx.fill();
+  if (asleep) {
+    // closed eyes, so a sleeping snake is obvious at a glance
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = line;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(hx + side * 6, hy - 4, 4, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+    }
+  } else {
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(hx + side * 6, hy - 5, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+
+  // Noodle wears a crown
+  if (snake.boss) {
+    ctx.fillStyle = token('--sun', '#FFC21A');
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(hx - 13, hy - radius - 2);
+    ctx.lineTo(hx - 8, hy - radius - 14);
+    ctx.lineTo(hx, hy - radius - 5);
+    ctx.lineTo(hx + 8, hy - radius - 14);
+    ctx.lineTo(hx + 13, hy - radius - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 1;
 }
 
 function drawToken(

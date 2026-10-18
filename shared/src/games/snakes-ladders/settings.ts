@@ -3,15 +3,19 @@ import type { SettingsSpec } from '../types.js';
 export type SnakesTurnTimer = 0 | 20 | 40;
 
 /**
- * The mock offers six twists. 4a ships the two that are plain rules; mystery
- * boxes, the snake standoff, the crowd vote and Noodle the wanderer need their
- * own interactions and arrive in 4b.
+ * The mock offers six twists. These are the ones that are plain rules and fit
+ * the existing socket contract. The snake standoff, the crowd vote and
+ * shake-to-roll need their own interactions and arrive in 4c.
  */
 export type SnakesSettings = {
   /** Land on 100 exactly, bouncing back off it otherwise. */
   exactFinish: boolean;
   /** A six lets you roll again, up to three rolls in a turn. */
   rollAgainOnSix: boolean;
+  /** Gift tiles hand out surprise cards. */
+  mysteryBoxes: boolean;
+  /** Noodle, the boss snake, relocates every few rounds. */
+  noodle: boolean;
   /** Seconds. 0 means off; on timeout the server rolls for you. */
   turnTimer: SnakesTurnTimer;
 };
@@ -19,6 +23,8 @@ export type SnakesSettings = {
 export const SNAKES_DEFAULTS: SnakesSettings = {
   exactFinish: true,
   rollAgainOnSix: true,
+  mysteryBoxes: true,
+  noodle: true,
   turnTimer: 20,
 };
 
@@ -44,6 +50,8 @@ export const snakesSettings: SettingsSpec<SnakesSettings> = {
     return {
       exactFinish: bool(p.exactFinish, base.exactFinish),
       rollAgainOnSix: bool(p.rollAgainOnSix, base.rollAgainOnSix),
+      mysteryBoxes: bool(p.mysteryBoxes, base.mysteryBoxes),
+      noodle: bool(p.noodle, base.noodle),
       turnTimer: timer ?? base.turnTimer,
     };
   },

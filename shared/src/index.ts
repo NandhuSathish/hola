@@ -73,6 +73,7 @@ export {
 
 export type {
   LastTurn,
+  LiveSnake,
   MoveStep,
   SnakesAction,
   SnakesSeat,
@@ -80,6 +81,8 @@ export type {
   SnakesView,
 } from './games/snakes-ladders/types.js';
 export { snakesLadders } from './games/snakes-ladders/index.js';
+export type { CardId, MysteryCard } from './games/snakes-ladders/cards.js';
+export { MYSTERY_DECK, cardById, drawCard } from './games/snakes-ladders/cards.js';
 export {
   COLUMNS,
   CROWD_TILES,

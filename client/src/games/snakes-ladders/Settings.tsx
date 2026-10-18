@@ -19,6 +19,16 @@ const RULES: { key: keyof SnakesSettings; title: string; blurb: string }[] = [
     title: 'Six rolls again',
     blurb: 'Throw a six and go again, up to three times a turn.',
   },
+  {
+    key: 'mysteryBoxes',
+    title: 'Mystery boxes',
+    blurb: 'Gift tiles hide rocket boots, banana peels, freeze rays and more.',
+  },
+  {
+    key: 'noodle',
+    title: 'Noodle the wanderer',
+    blurb: 'A crowned snake that slithers somewhere new every few rounds.',
+  },
 ];
 
 /** Snakes & Ladders house rules. The lobby renders whichever game is chosen. */
@@ -66,8 +76,7 @@ export function SnakesSettingsPanel({ settings, canEdit, onChange }: SettingsPro
       </div>
 
       <p className="form-note" style={{ marginTop: 10 }}>
-        Mystery boxes, the snake standoff, the crowd vote and Noodle the wanderer
-        arrive in the next update.
+        The snake standoff and the crowd vote arrive in the next update.
       </p>
     </>
   );

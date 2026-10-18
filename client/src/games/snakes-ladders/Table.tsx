@@ -1,5 +1,5 @@
 import type { GameEvent, PublicPlayer, SnakesView } from '@holla/shared';
-import { LAST_TILE } from '@holla/shared';
+import { LAST_TILE, cardById } from '@holla/shared';
 import { SnakesBoard } from './Board';
 import { Toast } from '../../components/Flourish';
 import { useTurnCountdown } from '../../lib/useTurnCountdown';
@@ -88,6 +88,10 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
                     {nameOf(seat.playerId)}
                     {seat.playerId === me && <em> (you)</em>}
                   </span>
+                  {seat.shield && (
+                    <span className="sl-badge" title="Snake shield">🛡</span>
+                  )}
+                  {seat.frozen && <span className="sl-badge" title="Frozen">❄</span>}
                   <span className="sl-pos">{seat.pos}</span>
                 </li>
               ))}
@@ -107,6 +111,19 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
               {nameOf(view.lastTurn.playerId)} rolled{' '}
               <b>{view.lastTurn.dice.join(' + ')}</b>
               {view.lastTurn.overshot && ' — bounced off 100'}
+              {drawnCard(view) && (
+                <>
+                  <br />
+                  <b className="sl-card">{drawnCard(view)?.name}</b> — {drawnCard(view)?.text}
+                </>
+              )}
+            </p>
+          )}
+
+          {(view.me.shield || view.me.double) && (
+            <p className="sl-held">
+              {view.me.shield && <span>🛡 Shield ready</span>}
+              {view.me.double && <span>🎲 Two dice next turn</span>}
             </p>
           )}
         </aside>
@@ -117,8 +134,26 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
   );
 }
 
+/** The card opened on the last roll, if any. */
+function drawnCard(view: SnakesView) {
+  const step = view.lastTurn?.steps.find((s) => s.kind === 'card');
+  return step && step.kind === 'card' ? cardById(step.card) : undefined;
+}
+
 /** Loud moments only — the rest just scroll past in the log. */
-const LOUD = new Set(['ladder', 'snake', 'bounce', 'again', 'timeout']);
+const LOUD = new Set([
+  'ladder',
+  'snake',
+  'bounce',
+  'again',
+  'timeout',
+  'box',
+  'bonk',
+  'freeze',
+  'quake',
+  'swap',
+  'noodle',
+]);
 
 function useToastFromEvents(
   events: GameEvent[],
