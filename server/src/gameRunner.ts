@@ -29,7 +29,7 @@ const fail = <T = never>(error: string): Outcome<T> => ({ ok: false, error });
 function seatedRefs(room: Room): PlayerRef[] {
   return room.players
     .filter((p) => !p.spectator)
-    .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar }));
+    .map((p) => ({ id: p.id, name: p.name, look: p.look }));
 }
 
 export function createGameRunner(deps: RunnerDeps = {}) {
@@ -96,8 +96,16 @@ export function createGameRunner(deps: RunnerDeps = {}) {
     return { events: result.events };
   }
 
-  /** A player was retired past the grace window; fold them out of the round. */
-  function playerLeft(room: Room, playerId: string): { events: GameEvent[] } | null {
+  /**
+   * Fold a player out of the round, whether they walked or were retired past
+   * the grace window. The name comes in rather than being looked up: on both
+   * paths they are already out of `room.players` by the time anyone reports it.
+   */
+  function playerLeft(
+    room: Room,
+    playerId: string,
+    name = 'Someone',
+  ): { events: GameEvent[] } | null {
     if (room.phase !== 'playing' || room.game === null) return null;
 
     const game = moduleFor(room);
@@ -105,7 +113,7 @@ export function createGameRunner(deps: RunnerDeps = {}) {
 
     room.game = game.onPlayerLeft(room.game, playerId);
     settleIfOver(room, game);
-    return { events: [{ kind: 'left', text: 'left the table', playerId }] };
+    return { events: [{ kind: 'left', text: `${name} left the table` }] };
   }
 
   /**

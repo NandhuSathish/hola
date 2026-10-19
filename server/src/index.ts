@@ -178,13 +178,38 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Fold them out of the round before the seat goes. Without this a
+    // player who leaves mid-game keeps a token on the board that still takes
+    // turns and can win a game they walked out of — the sweep did this for a
+    // dropped connection, but a deliberate exit never went through it.
+    const playing = store.roomOfPlayer(playerId);
+    const name = playing?.players.find((p) => p.id === playerId)?.name;
+    const folded = playing ? runner.playerLeft(playing, playerId, name) : null;
+
     const room = store.leave(playerId);
     if (room) void socket.leave(room.code);
     socket.data.playerId = undefined;
     socket.data.code = undefined;
 
     ack({ ok: true });
-    if (room) broadcast(room.code);
+    if (!room) return;
+    if (folded) publish(room, folded.events);
+    else broadcast(room.code);
+  });
+
+  socket.on('room:look', (input, ack) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) {
+      ack({ ok: false, error: 'You are not in a room.' });
+      return;
+    }
+    const res = store.setLook(playerId, input?.look);
+    if (!res.ok) {
+      ack({ ok: false, error: res.error });
+      return;
+    }
+    ack({ ok: true });
+    broadcast(res.value.code);
   });
 
   socket.on('room:setGame', (input, ack) => {
@@ -298,11 +323,11 @@ setInterval(() => {
 
   // Anyone retired past the grace window leaves the round properly, so their
   // cards go back to the pile rather than vanishing.
-  for (const { code, playerIds } of removed) {
+  for (const { code, gone } of removed) {
     const room = store.get(code);
     if (!room) continue;
-    for (const playerId of playerIds) {
-      const res = runner.playerLeft(room, playerId);
+    for (const { id, name } of gone) {
+      const res = runner.playerLeft(room, id, name);
       if (res) publish(room, res.events);
     }
   }

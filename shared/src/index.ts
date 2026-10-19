@@ -29,8 +29,17 @@ export {
 
 export { cleanName, isValidName, uniqueName } from './names.js';
 
-export type { Avatar } from './avatars.js';
-export { AVATARS, firstFreeAvatar, isValidAvatar } from './avatars.js';
+export type { Look } from './look.js';
+export {
+  DEFAULT_LOOK,
+  HAIRS,
+  SHORTS,
+  SKINS,
+  STYLES,
+  TEAM_COLOURS,
+  freeLook,
+  sanitiseLook,
+} from './look.js';
 
 export type {
   GameEvent,

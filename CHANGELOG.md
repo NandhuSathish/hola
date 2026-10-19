@@ -9,6 +9,199 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 4g — the crowd vote you can read
+
+Reported as "it showed two options but I could not select one". The vote was
+working: the subject of a crowd vote is never allowed to vote on their own
+fate, so on their screen both options are disabled — and `.sl-opt:disabled`
+set nothing but `cursor: default`, so a locked option looked exactly like a
+live one. Confirmed by watching both sides of a real vote: the voter's buttons
+came back `disabled: [false, false]`, the subject's `[true, true]`.
+
+- A locked option now reads as locked (desaturated and flattened, the same
+  treatment `.btn:disabled` gets), and the card says why in words: "Your own
+  fate is not yours to vote on", "You have voted", "You are not one of the
+  voters". A running "2 of 4 voted" sits under the options.
+- Your own pick stays bright after you vote rather than greying out with the
+  rest. It is information, not a control you have lost.
+
+**The options are the mock's now.** Two coloured cards side by side, each
+carrying the same 46px icon its matching mystery card does — `VOTE_ART` was
+built last phase and never wired up, so the options had been plain text on
+paper. Shape as well as colour, per rule 8, and the chosen one is outlined
+rather than merely tinted.
+
+**The board is kept inside the window** (`min(100%, calc(100dvh - …))`), as
+the mock sizes it. Prompts are centred on the board and run on a clock, and a
+board taller than the viewport could put one partly off-screen — you cannot
+answer what you cannot see.
+
+---
+
+### Phase 4f — a nav bar, and the room actions together
+
+**The nav bar** (`components/NavBar.tsx`) now sits on every screen, built the
+way the mock's own bar is (`.mockbar` in `design/holla-mock.html`): no solid
+band and no edge, just the page colour fading out beneath it, so what scrolls
+up into it dissolves rather than sliding behind a wall. A sun-yellow wordmark
+on the left with the hard ink shadow, and on the right one cream pill — the
+mock's way of grouping controls — holding a dot and name for the game you are
+in, the room code, and Leave.
+
+- The room code in the pill is itself the copy button: tap the code, get the
+  code. It turns into a tick without changing size, so nothing shifts.
+- Leave appears in the bar only where the screen beneath has no way out of its
+  own — which, before this, mid-game meant closing the tab. The lobby keeps its
+  own, so there are never two.
+- Below 620px the game name and the Leave label drop, leaving the coloured dot
+  and the door icon; both keep their accessible names.
+- `--nav-h` is a token and the bar is pinned to it, so a screen that wants the
+  rest of the viewport can ask for it. The lobby's reconnect banner is gone —
+  the bar reports that on every screen now.
+
+**The lobby's room actions** are together: the code, an icon-only copy button
+beside it, Copy invite link, and Leave room — the last two now carrying icons,
+and Leave the only red thing on the page since it is the only destructive one.
+Leave moved up from the bottom of the seat grid to join them.
+
+**Copying** moved into `lib/useCopy.ts`. The old call was `navigator.clipboard`
+with a bare try/catch that silently looked like it had worked. It now falls
+back to a hidden textarea — `navigator.clipboard` needs a secure context, and a
+phone on the LAN hitting a plain-HTTP dev server is not one — and says so when
+both fail instead of pretending.
+
+**Interface icons** (`components/icons.tsx`): copy, link, leave, check, home,
+in the mock's stroked style, drawn in `currentColor` so a red Leave gets a
+cream glyph without a second rule saying so. Plus `.btn.with-icon` and a 44px
+square `.icon-btn` in the tokens.
+
+#### Fixed on the way
+
+- **Leaving mid-game left your token on the board.** `room:leave` removed you
+  from the room but never folded you out of the round, so a seat nobody owned
+  kept taking turns and could win a game its player had walked out of. The
+  sweep did this for a dropped connection; a deliberate exit never went
+  through it. Found because the new Leave button is the first thing that makes
+  this easy to do — before, mid-game there was no way out but the tab close.
+- The leave line read "Someone left the table", because by the time anyone
+  reports it the player is already out of `room.players`. The name travels
+  with the departure now, on both the walk-out and the sweep paths.
+- `.leave-btn` tied `.btn` on specificity and lost on source order, so the red
+  never applied. Qualified as `.btn.leave-btn`. Same for `.sl-log-ico`, which
+  ties `.ui-icon` now that interface icons appear in the log.
+- The brand button was a 34px tap target; it is a link home, so it is 44 now.
+- An empty action pill rendered as a stray cream dot in the corner on Home.
+
+---
+
+### Phase 4e — the rest of the mock's play screen
+
+The board looked right but the furniture around it did not. The mock's play
+screen is a board plus three stickers; we had a banner, a flat list and a
+four-line log. All three stickers are now built, and the moments that make a
+turn fun — the dice, the box opening, the big word over the board — are in.
+
+**The turn card.** Whose turn it is, with their head ringed in their jersey
+colour, "Your turn" / "Rolling…" / "Waiting on the room…", and a Round pill.
+
+**The dice tray** (`Dice.tsx`). A canvas of felt green. Hold the button and the
+dice rattle; let go and they tumble, blurring through faces and only settling
+in the last 15% of the throw. Space does the same. The throw is a purely local
+animation on its own clock — the server still just says what came up.
+
+**The race.** Each player's progress along the board as a bar in their own
+colour, with Shield and Frozen badges and the tile number.
+
+**What happened.** The mock's scrolling log: a head for anything a player did,
+and the matching icon (ladder, snake, gift, megaphone, crown) for anything the
+board did. Replaces the four-line strip and the toast.
+
+**The mystery box reveal** (`Reveal.tsx`). A card sits face-down with a "?",
+turns over, and shows what you got. It never gates play: the engine applied
+the effect long ago, so the reveal is a telling, and it closes itself.
+
+**Stamps.** "Ladder!", "Gulp…", "Bonk!", "Rocket!", "Slip!", "Swap!",
+"Escaped!" slam over the board as each leg of a move lands.
+
+**Cues.** The board owns the move timeline, so it is the only thing that knows
+*when* a ladder is climbed or a box is opened. It now calls `onCue` as each leg
+begins, and the table lands its stamp or reveal on the beat instead of firing
+everything the moment the view arrives. Under reduced motion every leg cues at
+once, so the story still gets told.
+
+**The fighter builder** got its own column from 900px up. In a 440px card the
+stage was 150px tall and the eight head styles wrapped to three rows; now the
+fighter stands on a proper stage beside the form, and shrinks again on a phone
+so the name field stays above the fold.
+
+**Icons** (`icons.tsx`): the mock's fourteen SVGs, ported one for one. A card,
+a vote option and a log line are all identified by shape as well as colour, so
+the same drawing has to appear in all three places.
+
+#### Fixed on the way
+
+- The roll button read `shaking` from a stale closure in `onPointerUp`, so
+  releasing never rolled — pointerup lands in the same tick as pointerdown's
+  state update. It reads a ref now.
+- The card reveal never flipped: `onClose` was an inline arrow in the effect's
+  dependency list, and the table re-renders on every turn-clock tick, so the
+  flip timer was cancelled and restarted forever. Held in a ref.
+
+---
+
+### Phase 4d — the mock's art, and fighters
+
+The board was functional but it was not the mock. Snakes were two quadratic
+curves with a circle on the end — cable, not animals — tiles were flat rounded
+rectangles, and tokens were coloured discs with two letters on them. Rule 8
+says the mock is the visual source of truth, so the drawing code is now a port
+of it rather than an approximation.
+
+**The board** (`client/src/games/snakes-ladders/art.ts`)
+
+- Tiles: five pastel row-pair bands alternating per tile, a grid, Lilita One
+  numbers, animated gift boxes on the mystery tiles, a wobbling megaphone on
+  the crowd tiles, Start and Finish labels and a rocking crown on 100.
+- Ladders: shadow, ink underlay, then warm wood — the sticker build-up.
+- Snakes: a 56-point spine carrying a sine wave under an envelope that pins
+  both ends to their tiles, drawn as a run of overlapping circles so the radius
+  can taper head to tail and bulge around someone being swallowed. A stroked
+  path cannot do that, which is exactly why the old ones read as wire. Plus
+  banded scales, highlights, a flicking tongue, upright eyes that track
+  whoever is rolling, blinks, sleeping `z`s, Noodle's crown and bonk stars.
+
+**Fighters** (`client/src/art/fighter.ts`)
+
+The emoji avatar is gone. A player is now a little boxer described by three
+numbers — `{ style, skin, hair }` — which is what both mocks already stored
+under `holla-fighter`. It lives in `shared/src/look.ts` beside the name rather
+than inside a game, because it is identity: the same figure is your head in
+every seat list, your token on the board, and what Hand Cricket will draw in
+Phase 5. Jersey colour comes from seat order, so a full table stays tellable
+apart however people style themselves.
+
+- `drawFighter` / `drawHead`: 8 head styles, 5 skin tones, 6 hair colours, a
+  walk cycle, facing (front, back with a numbered jersey, or side), and moods.
+- `headIcon` rasterises a head to a cached data URL, so a lobby of 15 costs 15
+  small canvases for the session rather than one per render.
+- A build-a-fighter picker on Home and behind **Change my fighter** in the
+  lobby, with a live preview. `room:look` applies it in the lobby only —
+  mid-game a new outfit would be a disguise.
+
+**Placement**, taken from the mock too: a fighter's feet sit 26 units below the
+tile centre rather than through it, and players sharing a tile fan out into a
+small grid instead of stacking invisibly.
+
+#### Fixed on the way
+
+- Three grid columns were `1fr` rather than `minmax(0, 1fr)`, so they took
+  their min-content width and pushed the page sideways at 375px. The bigger
+  avatars made it visible; the bug was already there.
+- `overflow: hidden` on Last Card's `.av` would have clipped the turn ring,
+  which is a `::before` at `inset: -9px`. The head is rounded instead.
+
+---
+
 ### Phase 4c — the snake standoff and the crowd vote
 
 The two twists that stop the game and wait for people. The standoff gives you

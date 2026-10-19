@@ -1,4 +1,6 @@
-export type PlayerRef = { id: string; name: string; avatar: string };
+import type { Look } from '../look.js';
+
+export type PlayerRef = { id: string; name: string; look: Look };
 
 /** Feeds the event log and toasts. */
 export type GameEvent = { kind: string; text: string; playerId?: string };

@@ -43,7 +43,7 @@ function dice(...faces: number[]): () => number {
 }
 
 const players = (n: number): PlayerRef[] =>
-  Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `P${i}`, avatar: '🦊' }));
+  Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `P${i}`, look: { style: i % 8, skin: 1, hair: i % 6 } }));
 
 const ctx = (now = 0, rng = seeded()) => ({ now, rng });
 

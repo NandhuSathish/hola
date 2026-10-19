@@ -24,9 +24,8 @@
 }
 
 .winner-av {
-  font-size: 64px;
-  line-height: 1;
-  display: block;
+  display: inline-grid;
+  place-items: center;
   margin-bottom: 10px;
 }
 
@@ -93,7 +92,8 @@
 }
 
 .who-av {
-  font-size: 22px;
+  display: inline-grid;
+  place-items: center;
 }
 
 .who em {
@@ -120,8 +120,8 @@
 }
 
 .step-av {
-  font-size: 36px;
-  line-height: 1;
+  display: inline-grid;
+  place-items: center;
 }
 
 .step-name {
@@ -165,7 +165,7 @@
   .results-screen { padding: 20px 14px 48px; }
   .podium { gap: 8px; }
   .step { width: 31%; }
-  .step-av { font-size: 28px; }
+  .step-av .fighter-head { width: 34px; height: 34px; }
   .step-name { font-size: 12.5px; }
   .step .block { font-size: 28px; }
   .winner-crown { font-size: 32px; }

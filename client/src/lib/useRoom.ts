@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Ack, AckWith, GameEvent, LastCardView, RoomView, RoundResult, Seat } from '@holla/shared';
+import type { Ack, AckWith, GameEvent, LastCardView, RoomView, Look, RoundResult, Seat } from '@holla/shared';
 import { socket, type ConnectionState } from './socket';
 import { clearSeat, loadSeat, saveSeat, type Profile } from './session';
 import { navigate, roomPath } from './route';
@@ -154,6 +154,17 @@ export function useRoom(codeFromUrl: string | null) {
     [patch],
   );
 
+  /** Restyle in the lobby. Everyone sees it on the next room:state. */
+  const setLook = useCallback(
+    (look: Look) => {
+      patch({ error: null });
+      socket.emit('room:look', { look }, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+      });
+    },
+    [patch],
+  );
+
   const setGame = useCallback(
     (gameId: string) => {
       patch({ error: null });
@@ -215,6 +226,7 @@ export function useRoom(codeFromUrl: string | null) {
     createRoom,
     joinRoom,
     setGame,
+    setLook,
     updateSettings,
     startGame,
     sendAction,

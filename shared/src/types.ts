@@ -1,9 +1,11 @@
+import type { Look } from './look.js';
+
 /** A player as the server stores them. `secret` never leaves the server. */
 export type Player = {
   id: string;
   secret: string;
   name: string;
-  avatar: string;
+  look: Look;
   connected: boolean;
   joinedAt: number;
   lastSeen: number;

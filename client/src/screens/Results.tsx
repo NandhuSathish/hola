@@ -1,5 +1,7 @@
+import { DEFAULT_LOOK } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
 import { Confetti } from '../components/Flourish';
+import { Head } from '../components/Fighter';
 import './Results.css';
 
 type Props = { room: ReturnType<typeof useRoom> };
@@ -17,7 +19,8 @@ export function Results({ room }: Props) {
   if (!view) return null;
 
   const nameOf = (id: string) => view.players.find((p) => p.id === id)?.name ?? 'Someone';
-  const avatarOf = (id: string) => view.players.find((p) => p.id === id)?.avatar ?? '🙂';
+  const lookOf = (id: string) => view.players.find((p) => p.id === id)?.look ?? DEFAULT_LOOK;
+  const seatOf = (id: string) => Math.max(0, view.players.findIndex((p) => p.id === id));
   const isHost = room.me === view.hostId;
   const hostName = nameOf(view.hostId);
 
@@ -38,7 +41,9 @@ export function Results({ room }: Props) {
           <>
             <div className="winner">
               <span className="winner-crown" aria-hidden="true">👑</span>
-              <span className="winner-av">{avatarOf(payload.result.winnerId)}</span>
+              <span className="winner-av">
+                <Head look={lookOf(payload.result.winnerId)} seat={seatOf(payload.result.winnerId)} size={84} />
+              </span>
               <h1>{nameOf(payload.result.winnerId)} wins</h1>
               <p className="sub">Took {winnerPoints} points off the table.</p>
             </div>
@@ -50,7 +55,9 @@ export function Results({ room }: Props) {
                   if (!row) return null;
                   return (
                     <div className="step" key={place}>
-                      <span className="step-av">{avatarOf(row.playerId)}</span>
+                      <span className="step-av">
+                        <Head look={lookOf(row.playerId)} seat={seatOf(row.playerId)} size={44} />
+                      </span>
                       <span className="step-name">{nameOf(row.playerId)}</span>
                       <div className="block" style={{ background: colour, height }}>
                         {place}
@@ -76,7 +83,9 @@ export function Results({ room }: Props) {
                     <tr key={row.playerId} className={row.playerId === room.me ? 'mine' : undefined}>
                       <td>
                         <span className="who">
-                          <span className="who-av">{avatarOf(row.playerId)}</span>
+                          <span className="who-av">
+                            <Head look={lookOf(row.playerId)} seat={seatOf(row.playerId)} size={28} />
+                          </span>
                           {nameOf(row.playerId)}
                           {row.playerId === room.me && <em> (you)</em>}
                         </span>

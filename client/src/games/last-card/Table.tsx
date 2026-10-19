@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, Color, GameEvent, LastCardView, PublicPlayer } from '@holla/shared';
+import { DEFAULT_LOOK } from '@holla/shared';
+import { Head } from '../../components/Fighter';
 import { CardBack, PlayingCard, describeCard } from './Card';
 import { Confetti, FlyingCard, Stamp, Toast, type FlightPlan } from '../../components/Flourish';
 import { useTurnCountdown } from '../../lib/useTurnCountdown';
@@ -46,7 +48,8 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
   const myTurn = view.turnPlayerId === me;
   const playable = new Set(view.me.playableIds);
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? 'Someone';
-  const avatarOf = (id: string) => players.find((p) => p.id === id)?.avatar ?? '🙂';
+  const lookOf = (id: string) => players.find((p) => p.id === id)?.look ?? DEFAULT_LOOK;
+  const seatOf = (id: string) => Math.max(0, players.findIndex((p) => p.id === id));
 
   const mySeat = view.seats.find((s) => s.playerId === me);
   const others = view.seats.filter((s) => s.playerId !== me);
@@ -145,7 +148,9 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
                 }}
               >
                 <div className="seat-avatar">
-                  <span className="av">{avatarOf(seat.playerId)}</span>
+                  <span className="av">
+                    <Head look={lookOf(seat.playerId)} seat={seatOf(seat.playerId)} size={58} />
+                  </span>
                   <span className="cnt" aria-label={`${seat.cardCount} cards`}>
                     {seat.cardCount}
                   </span>
@@ -214,7 +219,9 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
           style={myTurn ? ({ ['--t']: String(progress) } as React.CSSProperties) : undefined}
         >
           <div className="seat-avatar">
-            <span className="av">{avatarOf(me)}</span>
+            <span className="av">
+              <Head look={lookOf(me)} seat={seatOf(me)} size={58} />
+            </span>
             {mySeat && (
               <span className="cnt" aria-label={`${mySeat.cardCount} cards`}>
                 {mySeat.cardCount}
@@ -311,7 +318,7 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
                     setPendingSwap(null);
                   }}
                 >
-                  {avatarOf(seat.playerId)} {nameOf(seat.playerId)} · {seat.cardCount}
+                  {nameOf(seat.playerId)} · {seat.cardCount}
                 </button>
               ))}
             </div>

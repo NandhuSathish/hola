@@ -2,7 +2,7 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: 24px 16px 60px;
-  min-height: 100vh;
+  min-height: calc(100dvh - var(--nav-h));
   display: grid;
   place-items: center;
 }
@@ -119,29 +119,6 @@
   color: #9b92b9;
 }
 
-.avatars {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.avatars button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 3px solid var(--line);
-  font-size: 22px;
-  cursor: pointer;
-  background: var(--paper-2);
-  transition: transform 0.1s;
-  line-height: 1;
-  padding: 0;
-}
-
-.avatars button[aria-checked='true'] {
-  transform: scale(1.12);
-  box-shadow: 0 0 0 4px var(--paper), 0 0 0 7px var(--line);
-}
 
 .btn.big {
   font-size: 24px;
@@ -196,4 +173,76 @@
   margin: 0;
   color: #5a5182;
   font-size: 14px;
+}
+
+/* ---------- the fighter builder ---------- */
+
+.home-panel {
+  gap: 18px;
+}
+
+.home-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.home-stage {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  align-content: start;
+  border: 3px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+  /* the dotted weave the mock uses behind a figure on paper */
+  background-image: radial-gradient(rgba(14, 10, 46, 0.07) 1.6px, transparent 2px);
+  background-size: 14px 14px;
+  padding: 12px 10px 14px;
+  min-width: 0;
+}
+
+.home-stage .look-stage {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  width: 100%;
+}
+
+.home-stage-label {
+  font-family: var(--fd);
+  font-size: 1rem;
+  color: var(--line);
+  opacity: 0.6;
+}
+
+/* The stage is generous on a desktop but must not push the name field
+   below the fold on a phone. */
+@media (max-width: 540px) {
+  /* height, not --h: the component sets --h inline, and an inline custom
+     property beats a stylesheet one whatever the selector. */
+  .home-stage .fighter-preview {
+    height: 190px;
+  }
+}
+
+@media (min-width: 900px) {
+  .home-panel {
+    /* The builder earns a column of its own here: in a 440px card the stage
+       was 150px tall and the head styles wrapped to three rows. */
+    max-width: 880px;
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+    padding: 26px;
+  }
+
+  .home-stage {
+    position: sticky;
+    top: 20px;
+    padding: 16px 12px 18px;
+  }
 }

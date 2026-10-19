@@ -19,12 +19,12 @@ function seeded(seed = 7): () => number {
 
 /** A room with `count` players seated, host first. */
 function room(count: number): { room: Room; ids: string[] } {
-  const host = store.create({ name: 'Host', avatar: '🐯', gameId: 'last-card' });
+  const host = store.create({ name: 'Host', look: { style: 0, skin: 1, hair: 0 }, gameId: 'last-card' });
   if (!host.ok) throw new Error(host.error);
   const ids = [host.value.playerId];
 
   for (let i = 1; i < count; i++) {
-    const joined = store.join({ code: host.value.code, name: 'P' + i, avatar: '🦊' });
+    const joined = store.join({ code: host.value.code, name: 'P' + i, look: { style: i % 8, skin: 1, hair: i % 6 } });
     if (!joined.ok) throw new Error(joined.error);
     ids.push(joined.value.playerId);
   }

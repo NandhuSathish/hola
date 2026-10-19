@@ -226,7 +226,7 @@ function main() {
   const bots: Bot[] = NAMES.slice(0, args.players).map((name, i) => ({
     id: `p${i}`,
     name,
-    avatar: '🦊',
+    look: { style: i % 8, skin: i % 5, hair: i % 6 },
   }));
 
   if (args.games === 1) {

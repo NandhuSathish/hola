@@ -48,6 +48,7 @@ holla/
     gameRunner.ts               # calls the active GameModule, broadcasts views
   client/src/
     main.tsx  App.tsx
+    art/                        # fighter.ts, palette.ts — canvas art shared by games
     styles/tokens.css           # colours, fonts, shadows from the mock
     screens/                    # Home, Games, Lobby, GameHost, Results
     games/
@@ -55,8 +56,8 @@ holla/
       last-card/                # Table UI + Settings panel for Last Card
       snakes-ladders/           # canvas board (phase 4)
       hand-cricket/             # canvas scene (phase 5)
-    components/                 # Card, Avatar, Seat, VoiceBar, Toast, Stamp...
-    lib/socket.ts  lib/session.ts  lib/route.ts  lib/canvas.ts  lib/voice.ts (v2)
+    components/                 # NavBar, Card, Fighter, LookPicker, icons, Toast...
+    lib/socket.ts  lib/session.ts  lib/route.ts  lib/canvas.ts  lib/useCopy.ts  lib/voice.ts (v2)
 ```
 
 ## Non-negotiable rules
@@ -89,7 +90,7 @@ holla/
 
 ### Phase 1 — Rooms and lobby (no voice yet)
 - Create room → 4-letter code (no I/O/0/1 lookalikes). Join by code or `/r/CODE` link.
-- Name + avatar picker; saved in `localStorage`.
+- Name + fighter builder; saved in `localStorage`.
 - Lobby: 15-seat grid, host crown, host-only settings and Start button, copy invite link.
 - Reconnect: `playerId` + `secret` in `localStorage`; seat kept for 60s after disconnect ("Reconnecting…").
 - If the host leaves, the next player becomes host. Empty rooms are deleted after 10 minutes.

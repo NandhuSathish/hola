@@ -13,8 +13,8 @@ function seqRng() {
 
 function seat(name: string, code?: string) {
   const res = code
-    ? store.join({ code, name, avatar: '🦊' })
-    : store.create({ name, avatar: '🐯', gameId: 'last-card' });
+    ? store.join({ code, name, look: { style: 1, skin: 1, hair: 1 } })
+    : store.create({ name, look: { style: 0, skin: 1, hair: 0 }, gameId: 'last-card' });
   if (!res.ok) throw new Error(res.error);
   return res.value;
 }
@@ -39,11 +39,11 @@ describe('creating and joining', () => {
   });
 
   it('refuses a blank name', () => {
-    expect(store.create({ name: '   ', avatar: '🐯', gameId: 'last-card' }).ok).toBe(false);
+    expect(store.create({ name: '   ', look: { style: 0, skin: 1, hair: 0 }, gameId: 'last-card' }).ok).toBe(false);
   });
 
   it('refuses an unknown code', () => {
-    const res = store.join({ code: 'ZZZZ', name: 'Sam', avatar: '🦊' });
+    const res = store.join({ code: 'ZZZZ', name: 'Sam', look: { style: 1, skin: 1, hair: 1 } });
     expect(res).toEqual({ ok: false, error: 'No room with that code.' });
   });
 
@@ -54,29 +54,29 @@ describe('creating and joining', () => {
     expect(store.get(host.code)!.players.map((p) => p.name)).toEqual(['Sam', 'Sam2', 'Sam3']);
   });
 
-  it('gives everyone a different avatar, even if they all ask for the same one', () => {
-    const host = store.create({ name: 'Host', avatar: '🐯', gameId: 'last-card' });
+  it('gives everyone a different fighter, even if they all ask for the same one', () => {
+    const host = store.create({ name: 'Host', look: { style: 0, skin: 1, hair: 0 }, gameId: 'last-card' });
     if (!host.ok) throw new Error(host.error);
     for (const who of ['A', 'B', 'C']) {
-      store.join({ code: host.value.code, name: who, avatar: '🐯' });
+      store.join({ code: host.value.code, name: who, look: { style: 0, skin: 1, hair: 0 } });
     }
-    const avatars = store.get(host.value.code)!.players.map((p) => p.avatar);
-    expect(new Set(avatars).size).toBe(4);
-    expect(avatars[0]).toBe('🐯');
+    const looks = store.get(host.value.code)!.players.map((p) => `${p.look.style}-${p.look.hair}`);
+    expect(new Set(looks).size).toBe(4);
+    expect(looks[0]).toBe('0-0'); // the host keeps what they picked
   });
 
-  it('keeps a free avatar the player actually chose', () => {
-    const host = store.create({ name: 'Host', avatar: '🐯', gameId: 'last-card' });
+  it('keeps a free fighter the player actually chose', () => {
+    const host = store.create({ name: 'Host', look: { style: 0, skin: 1, hair: 0 }, gameId: 'last-card' });
     if (!host.ok) throw new Error(host.error);
-    store.join({ code: host.value.code, name: 'B', avatar: '🦄' });
-    expect(store.get(host.value.code)!.players[1]?.avatar).toBe('🦄');
+    store.join({ code: host.value.code, name: 'B', look: { style: 5, skin: 2, hair: 4 } });
+    expect(store.get(host.value.code)!.players[1]?.look).toEqual({ style: 5, skin: 2, hair: 4 });
   });
 
   it('fills to 15 and then refuses', () => {
     const host = seat('Host');
     for (let i = 1; i < MAX_PLAYERS; i++) seat(`P${i}`, host.code);
     expect(store.get(host.code)!.players).toHaveLength(MAX_PLAYERS);
-    const overflow = store.join({ code: host.code, name: 'Late', avatar: '🦊' });
+    const overflow = store.join({ code: host.code, name: 'Late', look: { style: 1, skin: 1, hair: 1 } });
     expect(overflow).toEqual({ ok: false, error: 'That room is full.' });
   });
 });
@@ -256,7 +256,7 @@ describe('choosing a game and its rules', () => {
   });
 
   it('refuses to create a room on a coming-soon game', () => {
-    const res = store.create({ name: 'Host', avatar: '🐯', gameId: 'hand-cricket' });
+    const res = store.create({ name: 'Host', look: { style: 0, skin: 1, hair: 0 }, gameId: 'hand-cricket' });
     expect(res).toEqual({ ok: false, error: 'That game is not ready to play yet.' });
   });
 

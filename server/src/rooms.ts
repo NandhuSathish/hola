@@ -4,14 +4,15 @@ import {
   EMPTY_ROOM_TTL_MS,
   MAX_PLAYERS,
   cleanName,
-  firstFreeAvatar,
-  isValidAvatar,
+  freeLook,
   isValidName,
   isPickable,
   makeRoomCode,
   normaliseRoomCode,
+  sanitiseLook,
   settingsSpecs,
   uniqueName,
+  type Look,
   type Player,
   type Room,
   type RoomView,
@@ -29,12 +30,12 @@ export type Outcome<T> = { ok: true; value: T } | { ok: false; error: string };
 const ok = <T>(value: T): Outcome<T> => ({ ok: true, value });
 const fail = <T = never>(error: string): Outcome<T> => ({ ok: false, error });
 
-function newPlayer(name: string, avatar: string, now: number): Player {
+function newPlayer(name: string, look: Look, now: number): Player {
   return {
     id: randomUUID(),
     secret: randomBytes(24).toString('base64url'),
     name,
-    avatar,
+    look,
     connected: true,
     joinedAt: now,
     lastSeen: now,
@@ -96,13 +97,12 @@ export function createRoomStore(options: StoreOptions = {}) {
     if (next) room.hostId = next.id;
   }
 
-  function create(input: { name: string; avatar: string; gameId: string }): Outcome<Seat> {
+  function create(input: { name: string; look: unknown; gameId: string }): Outcome<Seat> {
     if (!isValidName(input.name)) return fail('Pick a name first.');
     if (!isPickable(input.gameId)) return fail('That game is not ready to play yet.');
-    const avatar = isValidAvatar(input.avatar) ? input.avatar : firstFreeAvatar([]);
     const at = now();
 
-    const host = newPlayer(cleanName(input.name), avatar, at);
+    const host = newPlayer(cleanName(input.name), sanitiseLook(input.look), at);
     const room: Room = {
       code: freshCode(),
       hostId: host.id,
@@ -120,7 +120,7 @@ export function createRoomStore(options: StoreOptions = {}) {
     return ok({ code: room.code, playerId: host.id, secret: host.secret });
   }
 
-  function join(input: { code: string; name: string; avatar: string }): Outcome<Seat> {
+  function join(input: { code: string; name: string; look: unknown }): Outcome<Seat> {
     const room = get(input.code);
     if (!room) return fail('No room with that code.');
     if (!isValidName(input.name)) return fail('Pick a name first.');
@@ -128,21 +128,33 @@ export function createRoomStore(options: StoreOptions = {}) {
 
     const at = now();
     const name = uniqueName(input.name, room.players.map((p) => p.name));
-    // Unique within a room where possible (REFERENCE.md section 5): a taken
-    // avatar is quietly swapped for a free one, so a table of people who never
-    // touched the picker still reads at a glance.
-    const taken = room.players.map((p) => p.avatar);
-    const wanted = input.avatar;
-    const avatar =
-      isValidAvatar(wanted) && !taken.includes(wanted) ? wanted : firstFreeAvatar(taken);
+    // Unique within a room where possible (REFERENCE.md section 5): a fighter
+    // someone else is already wearing is quietly restyled, so a table of people
+    // who never touched the picker still reads at a glance. Only style and hair
+    // are compared — skin tone is nobody else’s to reassign.
+    const taken = room.players.map((p) => p.look);
+    const wanted = sanitiseLook(input.look);
+    const clash = taken.some((l) => l.style === wanted.style && l.hair === wanted.hair);
+    const look = clash ? { ...freeLook(taken), skin: wanted.skin } : wanted;
 
-    const player = newPlayer(name, avatar, at);
+    const player = newPlayer(name, look, at);
     // Joining mid-round means watching until the next deal.
     player.spectator = room.phase !== 'lobby';
 
     room.players.push(player);
     playerIndex.set(player.id, room.code);
     return ok({ code: room.code, playerId: player.id, secret: player.secret });
+  }
+
+  /** Lobby only: mid-game a new outfit would be a disguise. */
+  function setLook(playerId: string, look: unknown): Outcome<Room> {
+    const room = roomOfPlayer(playerId);
+    if (!room) return fail('You are not in a room.');
+    if (room.phase !== 'lobby') return fail('Not while a game is running.');
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) return fail('You are not in a room.');
+    player.look = sanitiseLook(look);
+    return ok(room);
   }
 
   /** Same seat back if the secret matches — this is what survives a refresh. */
@@ -225,12 +237,12 @@ export function createRoomStore(options: StoreOptions = {}) {
   function sweep(): {
     changed: Room[];
     closed: string[];
-    removed: { code: string; playerIds: string[] }[];
+    removed: { code: string; gone: { id: string; name: string }[] }[];
   } {
     const at = now();
     const changed: Room[] = [];
     const closed: string[] = [];
-    const removed: { code: string; playerIds: string[] }[] = [];
+    const removed: { code: string; gone: { id: string; name: string }[] }[] = [];
 
     for (const room of [...rooms.values()]) {
       const expired = room.players.filter(
@@ -242,7 +254,7 @@ export function createRoomStore(options: StoreOptions = {}) {
         room.players = room.players.filter((p) => !expired.includes(p));
         reassignHost(room);
         changed.push(room);
-        removed.push({ code: room.code, playerIds: expired.map((p) => p.id) });
+        removed.push({ code: room.code, gone: expired.map((p) => ({ id: p.id, name: p.name })) });
       }
 
       const nobodyHere = room.players.every((p) => !p.connected);
@@ -267,6 +279,7 @@ export function createRoomStore(options: StoreOptions = {}) {
     create,
     join,
     playing,
+    setLook,
     rejoin,
     leave,
     setGame,

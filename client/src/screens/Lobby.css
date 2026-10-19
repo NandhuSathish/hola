@@ -6,7 +6,9 @@
 
 .lobby {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  /* minmax(0,…): a plain fr takes its min-content width, and the seat grid
+     and code row are both wide enough to push the page sideways. */
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
@@ -24,6 +26,17 @@
 .room-sub { margin: 6px 0 0; font-size: 16px; opacity: 0.8; }
 
 .code-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+
+/* Copy the code, copy the link, or walk — the three things you do with a
+   room, together rather than scattered down the page. */
+.code-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.copy-failed { margin: 8px 0 0; }
 .code { display: flex; gap: 8px; }
 
 .code span {
@@ -44,17 +57,6 @@
 .code span[data-i='3'] { background: var(--sky); }
 .code span:nth-child(odd) { transform: rotate(-4deg); }
 .code span:nth-child(even) { transform: rotate(4deg); }
-
-.reconnect-banner {
-  background: var(--sun);
-  color: var(--line);
-  border: 3px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 4px 4px 0 var(--line);
-  padding: 10px 14px;
-  font-weight: 900;
-  margin: 0 0 18px;
-}
 
 .players-title {
   display: flex;
@@ -97,9 +99,21 @@
   font-size: 14px;
 }
 
-.pav { font-size: 34px; line-height: 1; }
+.pav { border-radius: 16px; }
 .pname { font-weight: 900; font-size: 15px; word-break: break-word; }
 .pname em { font-style: normal; opacity: 0.6; font-weight: 700; }
+
+.lobby-me {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.lobby-restyle {
+  margin-top: 12px;
+  padding: 14px;
+}
 
 .crown {
   position: absolute;
@@ -119,7 +133,13 @@
   padding: 1px 7px;
 }
 
-.leave-btn { margin-top: 22px; }
+/* The one at the bottom is gone; this is the one in the code row. It is the
+   only destructive thing here, so it is the only red one.
+   Qualified with .btn: a bare class ties on specificity and loses on order. */
+.btn.leave-btn {
+  background: var(--red);
+  color: var(--paper);
+}
 
 /* ---------- house rules ---------- */
 .rules { padding: 24px; }
@@ -226,7 +246,7 @@
 
 @media (max-width: 820px) {
   .lobby-screen { padding: 18px 16px 48px; }
-  .lobby { grid-template-columns: 1fr; gap: 22px; }
+  .lobby { grid-template-columns: minmax(0, 1fr); gap: 22px; }
   .room-title { font-size: 28px; }
   .code span { width: 46px; height: 54px; font-size: 30px; }
   .pgrid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }

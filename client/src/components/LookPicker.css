@@ -1,0 +1,93 @@
+/* Build-a-fighter. Mobile first: the stage sits above the rows under 520px. */
+.look-picker {
+  display: grid;
+  gap: 14px;
+}
+
+.look-stage {
+  border: 3px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+  box-shadow: var(--shadow);
+  padding: 8px 0 0;
+  overflow: hidden;
+}
+
+.look-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.look-row {
+  display: grid;
+  gap: 6px;
+}
+
+.look-label {
+  font-family: var(--fd);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  /* the picker always sits on a cream sticker, never on the dark page */
+  color: var(--line);
+  opacity: 0.75;
+}
+
+.look-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Rule 6: every tap target is at least 44px. */
+.look-chip {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--line);
+  font-family: var(--fb);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.look-chip.on {
+  background: var(--sun);
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+.look-swatch {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  position: relative;
+}
+
+.look-swatch.on {
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+/* A tick, so the choice is not carried by colour alone. */
+.look-swatch.on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 9px;
+  height: 15px;
+  margin: -9px 0 0 -5px;
+  border-right: 3.5px solid var(--paper);
+  border-bottom: 3.5px solid var(--paper);
+  transform: rotate(40deg);
+  filter: drop-shadow(0 0 1.5px var(--line));
+}
+
+@media (min-width: 520px) {
+  .look-picker {
+    grid-template-columns: 150px 1fr;
+    align-items: start;
+  }
+}

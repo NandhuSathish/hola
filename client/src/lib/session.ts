@@ -1,14 +1,14 @@
-import { AVATARS, type Seat } from '@holla/shared';
+import { DEFAULT_LOOK, sanitiseLook, type Look, type Seat } from '@holla/shared';
 
 const PROFILE_KEY = 'holla:profile';
 const seatKey = (code: string) => `holla:seat:${code.toUpperCase()}`;
 
-export type Profile = { name: string; avatar: string };
+export type Profile = { name: string; look: Look };
 
 /**
  * Two stores on purpose:
  *
- * - The profile (name, avatar) lives in localStorage. That is you, on this
+ * - The profile (name, fighter) lives in localStorage. That is you, on this
  *   device, across every room and every visit.
  * - The seat lives in sessionStorage, which is per browser tab. It still
  *   survives a refresh, a crash and a dropped connection, which is what the
@@ -48,7 +48,7 @@ export function loadProfile(): Profile {
   const saved = read<Partial<Profile>>(localStorage, PROFILE_KEY);
   return {
     name: typeof saved?.name === 'string' ? saved.name : '',
-    avatar: typeof saved?.avatar === 'string' ? saved.avatar : AVATARS[0],
+    look: saved?.look ? sanitiseLook(saved.look) : DEFAULT_LOOK,
   };
 }
 

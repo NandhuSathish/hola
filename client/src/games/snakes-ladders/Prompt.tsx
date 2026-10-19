@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Prompt, PublicPlayer } from '@holla/shared';
-import { needleAt } from '@holla/shared';
+import { DEFAULT_LOOK, needleAt } from '@holla/shared';
+import { Head } from '../../components/Fighter';
+import { VOTE_ART } from './icons';
 import { usePrefersReducedMotion } from '../../lib/motion';
 import './Prompt.css';
 
@@ -13,7 +15,11 @@ type Props = {
 
 export function SnakesPrompt({ prompt, me, players, send }: Props) {
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? 'Someone';
-  const avatarOf = (id: string) => players.find((p) => p.id === id)?.avatar ?? '🙂';
+  const lookOf = (id: string) => players.find((p) => p.id === id)?.look ?? DEFAULT_LOOK;
+  const seatOf = (id: string) => Math.max(0, players.findIndex((p) => p.id === id));
+  const headOf = (id: string, size = 34) => (
+    <Head look={lookOf(id)} seat={seatOf(id)} size={size} />
+  );
   const mine = prompt.awaiting.includes(me);
   const left = useCountdown(prompt.endsAt);
 
@@ -27,7 +33,7 @@ export function SnakesPrompt({ prompt, me, players, send }: Props) {
             mine={mine}
             subject={prompt.awaiting[0] ?? ''}
             nameOf={nameOf}
-            avatarOf={avatarOf}
+            headOf={headOf}
             send={send}
           />
         ) : (
@@ -37,7 +43,7 @@ export function SnakesPrompt({ prompt, me, players, send }: Props) {
             mine={mine}
             me={me}
             nameOf={nameOf}
-            avatarOf={avatarOf}
+            headOf={headOf}
             send={send}
           />
         )}
@@ -56,7 +62,7 @@ function Standoff({
   mine,
   subject,
   nameOf,
-  avatarOf,
+  headOf,
   send,
 }: {
   prompt: Prompt;
@@ -64,7 +70,7 @@ function Standoff({
   mine: boolean;
   subject: string;
   nameOf: (id: string) => string;
-  avatarOf: (id: string) => string;
+  headOf: (id: string, size?: number) => React.ReactNode;
   send: (action: unknown) => void;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -75,7 +81,7 @@ function Standoff({
   return (
     <>
       <p className="sl-prompt-who">
-        <span>{avatarOf(subject)}</span>
+        {headOf(subject)}
         {nameOf(subject)} vs the snake on {detail.snakeHead}
       </p>
       <h2>Snake standoff!</h2>
@@ -112,7 +118,7 @@ function CrowdVote({
   mine,
   me,
   nameOf,
-  avatarOf,
+  headOf,
   send,
 }: {
   prompt: Prompt;
@@ -120,49 +126,71 @@ function CrowdVote({
   mine: boolean;
   me: string;
   nameOf: (id: string) => string;
-  avatarOf: (id: string) => string;
+  headOf: (id: string, size?: number) => React.ReactNode;
   send: (action: unknown) => void;
 }) {
   const myVote = detail.votes[me];
   const voters = Object.entries(detail.votes);
+  const iAmSubject = detail.subjectId === me;
+  const voted = myVote !== undefined;
+  const canVote = mine && !voted;
+  // Everyone still being waited on, plus everyone who has answered.
+  const crowdSize = prompt.awaiting.length + voters.length;
+
+  // Why a button cannot be pressed, in the words of the person reading it.
+  const lockedBecause = iAmSubject
+    ? 'Your own fate is not yours to vote on.'
+    : voted
+      ? 'You have voted.'
+      : 'You are not one of the voters.';
 
   return (
     <>
       <p className="sl-prompt-who">
-        <span>{avatarOf(detail.subjectId)}</span>
-        {detail.subjectId === me ? 'You are' : `${nameOf(detail.subjectId)} is`} at the mercy of the
-        crowd
+        {headOf(detail.subjectId)}
+        {iAmSubject ? 'You are' : `${nameOf(detail.subjectId)} is`} at the mercy of the crowd
       </p>
       <h2>Crowd choice</h2>
       <p className="sl-prompt-sub">
-        {detail.subjectId === me
-          ? 'Everyone else decides. Plead your case!'
-          : mine
-            ? 'Pick one. Majority wins.'
-            : 'Waiting for the rest of the room…'}
+        {iAmSubject
+          ? 'Not your call — the others decide. Plead your case!'
+          : voted
+            ? 'Vote in. Waiting for the rest…'
+            : mine
+              ? 'Pick one. Majority wins.'
+              : 'Waiting for the rest of the room…'}
       </p>
 
       <div className="sl-opts">
         {detail.options.map((option, i) => {
           const backers = voters.filter(([, choice]) => choice === i).map(([id]) => id);
+          const art = VOTE_ART[option.icon];
+          const Icon = art?.Icon;
           return (
             <button
               key={option.label}
               type="button"
               className={`sl-opt${myVote === i ? ' chosen' : ''}`}
-              disabled={!mine || myVote !== undefined}
+              style={{ ['--c' as string]: art?.colour ?? 'var(--paper-2)' }}
+              disabled={!canVote}
+              aria-pressed={myVote === i}
+              title={canVote ? option.label : lockedBecause}
               onClick={() => send({ type: 'vote', promptId: prompt.id, option: i as 0 | 1 })}
             >
+              {Icon && <Icon />}
               <b>{option.label}</b>
               <span className="sl-opt-votes">
-                {backers.length === 0
-                  ? '—'
-                  : backers.map((id) => <span key={id}>{avatarOf(id)}</span>)}
+                {backers.map((id) => <span key={id}>{headOf(id, 24)}</span>)}
               </span>
             </button>
           );
         })}
       </div>
+
+      <p className="sl-tally" aria-live="polite">
+        {voters.length} of {crowdSize} voted
+        {!canVote && <span className="sl-locked"> · {lockedBecause}</span>}
+      </p>
     </>
   );
 }

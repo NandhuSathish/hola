@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AVATARS, NAME_MAX_LENGTH, isValidRoomCode, normaliseRoomCode } from '@holla/shared';
+import { NAME_MAX_LENGTH, isValidRoomCode, normaliseRoomCode } from '@holla/shared';
+import { LookRows, LookStage } from '../components/LookPicker';
 import { loadProfile, saveProfile } from '../lib/session';
 import { useRoom } from '../lib/useRoom';
 import { gamesPath, navigate } from '../lib/route';
@@ -31,7 +32,18 @@ export function Home({ room }: Props) {
           Card nights with your crew. Open the link, pick a game, start playing.
         </p>
 
-        <section className="sticker panel">
+        {/*
+          Two columns from 900px up: the fighter gets a stage of its own and
+          the form sits beside it. Below that they stack, stage first, which
+          is the same order read down a phone.
+        */}
+        <section className="sticker panel home-panel">
+          <div className="home-stage">
+            <LookStage look={profile.look} height={260} />
+            <span className="home-stage-label">Your fighter</span>
+          </div>
+
+          <div className="home-form">
           <label className="field-title" htmlFor="nick">Your name</label>
           <input
             id="nick"
@@ -42,21 +54,8 @@ export function Home({ room }: Props) {
             onChange={(e) => update({ name: e.target.value })}
           />
 
-          <span className="field-title" id="avlbl">Pick an avatar</span>
-          <div className="avatars" role="radiogroup" aria-labelledby="avlbl">
-            {AVATARS.map((a) => (
-              <button
-                key={a}
-                type="button"
-                role="radio"
-                aria-checked={profile.avatar === a}
-                aria-label={`Avatar ${a}`}
-                onClick={() => update({ avatar: a })}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
+          <span className="field-title">Build your fighter</span>
+          <LookRows look={profile.look} onChange={(look) => update({ look })} />
 
           <button
             type="button"
@@ -99,6 +98,7 @@ export function Home({ room }: Props) {
               {room.connection === 'connecting' ? 'Connecting to the server…' : 'Lost the server. Retrying…'}
             </p>
           )}
+          </div>
         </section>
       </div>
     </main>

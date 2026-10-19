@@ -1,4 +1,5 @@
 import type { RoomView } from './types.js';
+import type { Look } from './look.js';
 import type { GameEvent, RoundResult } from './games/types.js';
 
 /**
@@ -15,8 +16,8 @@ export type Seat = {
   secret: string;
 };
 
-export type CreateRoomInput = { name: string; avatar: string; gameId: string };
-export type JoinRoomInput = { code: string; name: string; avatar: string };
+export type CreateRoomInput = { name: string; look: Look; gameId: string };
+export type JoinRoomInput = { code: string; name: string; look: Look };
 export type RejoinRoomInput = { code: string; playerId: string; secret: string };
 
 export interface ClientToServerEvents {
@@ -24,6 +25,8 @@ export interface ClientToServerEvents {
   'room:join': (input: JoinRoomInput, ack: (res: AckWith<Seat>) => void) => void;
   'room:rejoin': (input: RejoinRoomInput, ack: (res: Ack) => void) => void;
   'room:leave': (ack: (res: Ack) => void) => void;
+  /** Restyle your fighter. Lobby only — mid-game it would be a disguise. */
+  'room:look': (input: { look: Look }, ack: (res: Ack) => void) => void;
   /** Host only, lobby only, and the game must be a 'ready' one. */
   'room:setGame': (input: { gameId: string }, ack: (res: Ack) => void) => void;
   /** Host only, lobby only. The patch is validated by the game's own spec. */

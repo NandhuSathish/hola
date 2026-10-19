@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { MAX_PLAYERS, getGameInfo } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
+import { Head } from '../components/Fighter';
+import { LookPicker } from '../components/LookPicker';
+import { CheckIcon, CopyIcon, LeaveIcon, LinkIcon } from '../components/icons';
+import { useCopy } from '../lib/useCopy';
+import { loadProfile, saveProfile } from '../lib/session';
 import { gamesPath, navigate } from '../lib/route';
 import { getGameUI } from '../games';
 import './Lobby.css';
@@ -8,18 +13,12 @@ import './Lobby.css';
 type Props = { room: ReturnType<typeof useRoom>; code: string };
 
 export function Lobby({ room, code }: Props) {
-  const [copied, setCopied] = useState(false);
+  const [restyling, setRestyling] = useState(false);
+  // Two independent copies, so tapping one does not make the other claim it
+  // copied something it did not.
+  const codeCopy = useCopy();
+  const linkCopy = useCopy();
   const view = room.room;
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/r/${code}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   if (!view) {
     return (
@@ -37,6 +36,8 @@ export function Lobby({ room, code }: Props) {
 
   const isHost = room.me === view.hostId;
   const game = getGameInfo(view.gameId);
+  const mySeat = Math.max(0, view.players.findIndex((p) => p.id === room.me));
+  const myLook = view.players[mySeat]?.look ?? loadProfile().look;
   const ui = getGameUI(view.gameId);
   const Settings = ui?.Settings;
   const seated = view.players.length;
@@ -46,10 +47,6 @@ export function Lobby({ room, code }: Props) {
 
   return (
     <main className="lobby-screen">
-      {room.connection !== 'connected' && (
-        <p className="reconnect-banner" role="status">Reconnecting…</p>
-      )}
-
       <div className="lobby">
         <div>
           <div className="room-head">
@@ -63,10 +60,42 @@ export function Lobby({ room, code }: Props) {
                   <span key={i} data-i={i % 4}>{char}</span>
                 ))}
               </div>
-              <button type="button" className="btn small" onClick={copyLink}>
-                {copied ? 'Copied!' : 'Copy invite link'}
-              </button>
+
+              <div className="code-actions">
+                <button
+                  type="button"
+                  className={`icon-btn${codeCopy.copied ? ' done' : ''}`}
+                  onClick={() => codeCopy.copy(view.code)}
+                  title="Copy the room code"
+                  aria-label="Copy the room code"
+                >
+                  {codeCopy.copied ? <CheckIcon /> : <CopyIcon />}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn small with-icon"
+                  onClick={() => linkCopy.copy(`${window.location.origin}/r/${code}`)}
+                >
+                  {linkCopy.copied ? <CheckIcon /> : <LinkIcon />}
+                  {linkCopy.copied ? 'Copied!' : 'Copy invite link'}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn small with-icon leave-btn"
+                  onClick={() => room.leaveRoom()}
+                >
+                  <LeaveIcon />
+                  Leave room
+                </button>
+              </div>
             </div>
+            {(codeCopy.failed || linkCopy.failed) && (
+              <p className="form-note copy-failed" role="alert">
+                Could not reach the clipboard — select the code and copy it by hand.
+              </p>
+            )}
           </div>
 
           <div className="players-title">
@@ -75,10 +104,10 @@ export function Lobby({ room, code }: Props) {
           </div>
 
           <ul className="pgrid">
-            {view.players.map((p) => (
+            {view.players.map((p, seat) => (
               <li key={p.id} className={`sticker pslot${p.connected ? '' : ' away'}`}>
                 {p.id === view.hostId && <span className="crown" title="Host">👑</span>}
-                <span className="pav">{p.avatar}</span>
+                <Head className="pav" look={p.look} seat={seat} size={54} />
                 <span className="pname">
                   {p.name}
                   {p.id === room.me && <em> (you)</em>}
@@ -92,9 +121,30 @@ export function Lobby({ room, code }: Props) {
             ))}
           </ul>
 
-          <button type="button" className="btn leave-btn" onClick={() => room.leaveRoom()}>
-            Leave room
-          </button>
+          <div className="lobby-me">
+            <button
+              type="button"
+              className="btn small"
+              aria-expanded={restyling}
+              onClick={() => setRestyling((on) => !on)}
+            >
+              {restyling ? 'Done' : 'Change my fighter'}
+            </button>
+          </div>
+
+          {restyling && (
+            <div className="sticker lobby-restyle">
+              <LookPicker
+                look={myLook}
+                seat={mySeat}
+                onChange={(look) => {
+                  // Saved locally as well, so it is your fighter next room too.
+                  saveProfile({ ...loadProfile(), look });
+                  room.setLook(look);
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <aside className="sticker rules">

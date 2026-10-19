@@ -6,7 +6,7 @@ The detailed spec behind `CLAUDE.md`: what to build, how the pieces talk, and wh
 
 ## 1. Product in one paragraph
 
-A friend opens holla!, picks a name and avatar, taps **Create a room**, chooses a game, and shares a 4-letter code or link.
+A friend opens holla!, picks a name and builds a fighter, taps **Create a room**, chooses a game, and shares a 4-letter code or link.
 Up to 15 friends join from phones or laptops and play **Last Card** (Uno-style), **Snakes & Ladders** or **Hand Cricket**.
 Built-in voice arrives in v2; until then people keep a call open alongside.
 After each round there's a results screen, then another deal. No sign-up, nothing to install.
@@ -66,7 +66,7 @@ export interface GameModule<State, Action, View, Settings> {
   onPlayerLeft(state: State, playerId: string): State;    // keep the game going
 }
 
-type PlayerRef  = { id: string; name: string; avatar: string };
+type PlayerRef  = { id: string; name: string; look: Look };
 type GameEvent  = { kind: string; text: string; playerId?: string };  // feeds the log + toasts
 type RoundResult = { winnerId: string; scores: { playerId: string; cardsLeft: number; points: number }[] };
 ```
@@ -177,10 +177,10 @@ Wild Draw 4 can be played any time (no challenge rule in v1).
 
 - **Room code:** 4 letters from `ABCDEFGHJKLMNPQRSTUVWXYZ` (no I, O). Case-insensitive input.
 - **Player identity:** server issues `{ playerId, secret }` on create/join.
-- **Where it is stored:** the seat lives in `sessionStorage` per room code, the profile (name, avatar) in `localStorage`. sessionStorage is per browser tab, so it still survives a refresh, a crash and a dropped connection — which is all the 60s grace window needs — while letting two tabs be two players. With localStorage every tab on a device would silently share one seat, which would stop friends sharing a laptop and make the "three tabs stay in sync" test impossible.
+- **Where it is stored:** the seat lives in `sessionStorage` per room code, the profile (name, fighter) in `localStorage`. sessionStorage is per browser tab, so it still survives a refresh, a crash and a dropped connection — which is all the 60s grace window needs — while letting two tabs be two players. With localStorage every tab on a device would silently share one seat, which would stop friends sharing a laptop and make the "three tabs stay in sync" test impossible.
 - **Rejoin:** on reconnect the client sends `room:rejoin` with the stored pair. Matching secret → same seat.
 - **Limits:** 15 players max. Names 1–14 chars, trimmed, unique within the room (append a digit if taken). The join/create ack returns only `{ code, playerId, secret }`; the client reads its final (possibly de-duplicated) name from the `room:state` that follows, matching on `playerId`.
-- **Avatars:** 16 options, so every seat at a full table is distinct — 🐯 🦊 🐼 🐸 🐙 🦄 🐨 🐵 🐺 🐷 🦁 🐮 🐔 🐧 🦉 🐝. Unique within a room where possible; the picker dims ones already taken.
+- **Fighters:** there is no emoji avatar. You are a little boxer, described by three numbers — `{ style, skin, hair }` — exactly as both mocks store them under `holla-fighter`. 8 head styles (cap, beanie, spiky, bun, headband, curls, mohawk, bunny hood), 5 skin tones, 6 hair colours. The same figure is your head in every seat list and your token on the Snakes & Ladders board, and Hand Cricket draws it too. Jersey colour comes from seat order, not from the look, so a full table stays tellable apart however people style themselves. Unique within a room where possible: a style+hair pair someone already wears is quietly restyled on join, but skin tone is never reassigned. Every index is clamped on the way in, because an out-of-range one would throw inside the renderer on every frame.
 - **Host:** creator. If host disconnects for more than 60s or leaves, the longest-present player becomes host.
 - **Cleanup:** a room with no connected players is deleted after 10 minutes.
 
@@ -194,7 +194,7 @@ type Room = {
   code: string;
   hostId: string;
   players: {
-    id: string; secret: string; name: string; avatar: string;
+    id: string; secret: string; name: string; look: Look;
     connected: boolean; joinedAt: number; lastSeen: number;
     spectator: boolean;            // true = watching only, seated next round
   }[];
@@ -217,8 +217,9 @@ All payloads are typed in `shared/src/events.ts`. Client → server events use a
 ### Client → server
 | Event | Payload | Ack |
 |---|---|---|
-| `room:create` | `{ name, avatar, gameId }` | `{ code, playerId, secret }` |
-| `room:join` | `{ code, name, avatar }` | `{ code, playerId, secret }` |
+| `room:create` | `{ name, look, gameId }` | `{ code, playerId, secret }` |
+| `room:join` | `{ code, name, look }` | `{ code, playerId, secret }` |
+| `room:look` | `{ look }` | `{ ok }` — lobby only |
 | `room:setGame` | `{ gameId }` (host only, lobby only, must be a `ready` game) | `{ ok } \| { error }` |
 | `room:rejoin` | `{ code, playerId, secret }` | `{ ok }` |
 | `room:leave` | `{}` | `{ ok }` |

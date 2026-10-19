@@ -34,6 +34,9 @@
 
   --shadow: 5px 5px 0 var(--line);
 
+  /* height of the nav bar, so screens can claim the rest of the viewport */
+  --nav-h: 74px;
+
   --fd: 'Lilita One', system-ui, sans-serif; /* display: headings, cards, buttons */
   --fb: 'Nunito', system-ui, sans-serif; /* body, weights 700-900 */
 }
@@ -133,4 +136,55 @@ h3 {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/*
+ * A button that carries an icon beside its label. The icon takes the
+ * button's own colour, so a red Leave gets a cream glyph without a second
+ * rule saying so.
+ */
+.btn.with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn.with-icon .ui-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/*
+ * Icon only, for an action whose meaning the shape already carries. Square
+ * and 44px so it is still a legal tap target (rule 6) without a label.
+ */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--line);
+  background: var(--paper);
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--line);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.08s, box-shadow 0.08s, background 0.12s;
+}
+
+.icon-btn .ui-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+}
+
+/* Confirmation without changing the button's size, so nothing shifts. */
+.icon-btn.done {
+  background: var(--mint);
 }
