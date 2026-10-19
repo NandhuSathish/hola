@@ -9,6 +9,45 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 5a — the Hand Cricket engine
+
+Two teams, a toss, two innings, the second chasing. Each ball the striker and
+the bowler throw a number from 0/1/2/3/4/6 at the same moment: same number and
+the batter is out, otherwise they score theirs.
+
+- The room splits into two sides alternating down the seat order, so four
+  friends who joined together do not all end up on the same team.
+- The bowler changes every over. The strike crosses on odd runs and again at
+  the end of an over, as the ends would. A side is all out at
+  `max(1, teamSize - 1)` wickets — real cricket for any team of two or more,
+  and still sane for a one-a-side game.
+- `onTick` is not a courtesy here the way a turn timer is: it is what closes
+  the ball. Anyone who did not throw in time gets a number from the rng, and
+  a number already thrown is kept.
+- No fan role. With teams everyone is already batting or bowling, so the
+  guessing mechanic the mock has is gone and `CLAUDE.md` says so now.
+
+**The simultaneous pick is the reason the view does real work.** Until a ball
+closes you get your own number back and nobody else's. Who we are still
+waiting on is public — that is a fact about the room, not about anyone's
+number — but the number itself is not, and a test asserts the opponent's pick
+appears nowhere in their payload.
+
+47 tests: the toss and who may call it, scoring and wickets, bowler and strike
+rotation, the innings change, chase, tie and all-out endings, the pick window,
+leaving mid-match, and that the engine never mutates what it is handed and
+replays identically from a seed.
+
+The catalogue entry stays `soon` until its table lands in 5b — the engine
+being ready is not the same as the game being playable, and flipping it early
+would let a host start a match that opens on a dead screen.
+
+#### Fixed on the way
+
+- Three server tests used `hand-cricket` as their stand-in for a coming-soon
+  game. They point at an id the catalogue has never heard of now, which takes
+  the same branch and does not rot the next time a game ships.
+
 ### Phase 4g — the crowd vote you can read
 
 Reported as "it showed two options but I could not select one". The vote was

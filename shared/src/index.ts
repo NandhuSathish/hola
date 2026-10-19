@@ -124,6 +124,31 @@ export {
 export type { SnakesSettings, SnakesTurnTimer } from './games/snakes-ladders/settings.js';
 export { MAX_ROLLS_PER_TURN, SNAKES_DEFAULTS, snakesSettings } from './games/snakes-ladders/settings.js';
 
+export type {
+  BallWindow,
+  Batter,
+  BowlerFigures,
+  HandCricketAction,
+  HandCricketState,
+  HandCricketView,
+  Innings,
+  InningsView,
+  Outcome,
+  Pick,
+  ResolvedBall,
+  Side,
+  Toss,
+} from './games/hand-cricket/types.js';
+export { NUMBERS, isPick } from './games/hand-cricket/types.js';
+export { handCricket } from './games/hand-cricket/index.js';
+export type { HandCricketSettings, Overs, PickSeconds } from './games/hand-cricket/settings.js';
+export {
+  BALLS_PER_OVER,
+  HAND_CRICKET_DEFAULTS,
+  handCricketSettings,
+} from './games/hand-cricket/settings.js';
+export { splitTeams, wicketsAvailable } from './games/hand-cricket/rules.js';
+
 export type { LastCardSettings, TurnTimer } from './games/last-card/settings.js';
 export { LAST_CARD_DEFAULTS, lastCardSettings } from './games/last-card/settings.js';
 

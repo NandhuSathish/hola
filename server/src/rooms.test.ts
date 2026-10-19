@@ -255,18 +255,38 @@ describe('choosing a game and its rules', () => {
     expect(room.settings).toMatchObject({ stackDraw: true, turnTimer: 20 });
   });
 
-  it('refuses to create a room on a coming-soon game', () => {
-    const res = store.create({ name: 'Host', look: { style: 0, skin: 1, hair: 0 }, gameId: 'hand-cricket' });
+  it('refuses to create a room on a game that is not ready', () => {
+    const res = store.create({
+      name: 'Host',
+      look: { style: 0, skin: 1, hair: 0 },
+      gameId: 'buckaroo',
+    });
     expect(res).toEqual({ ok: false, error: 'That game is not ready to play yet.' });
   });
 
-  it('refuses to switch to a coming-soon game', () => {
+  it('refuses to switch to a game that is not ready', () => {
+    const host = seat('Host');
+    expect(store.setGame(host.playerId, 'buckaroo')).toEqual({
+      ok: false,
+      error: 'That game is not ready to play yet.',
+    });
+    expect(store.get(host.code)!.gameId).toBe('last-card');
+  });
+
+  it('takes every game the catalogue says is ready', () => {
+    const host = seat('Host');
+    for (const id of ['last-card', 'snakes-ladders']) {
+      expect(store.setGame(host.playerId, id)).toMatchObject({ ok: true });
+      expect(store.get(host.code)!.gameId).toBe(id);
+    }
+  });
+
+  it('will not start a game whose engine exists but whose table does not', () => {
     const host = seat('Host');
     expect(store.setGame(host.playerId, 'hand-cricket')).toEqual({
       ok: false,
       error: 'That game is not ready to play yet.',
     });
-    expect(store.get(host.code)!.gameId).toBe('last-card');
   });
 
   it('refuses an unknown game id', () => {

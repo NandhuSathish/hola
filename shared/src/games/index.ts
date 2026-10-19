@@ -3,6 +3,8 @@ import { lastCardSettings } from './last-card/settings.js';
 import { lastCard } from './last-card/index.js';
 import { snakesSettings } from './snakes-ladders/settings.js';
 import { snakesLadders } from './snakes-ladders/index.js';
+import { handCricketSettings } from './hand-cricket/settings.js';
+import { handCricket } from './hand-cricket/index.js';
 
 /**
  * Everything the picker shows, built or not. Order is display order.
@@ -22,10 +24,11 @@ export const catalogue: GameInfo[] = [
     id: 'hand-cricket',
     name: 'Hand Cricket',
     tagline:
-      'Two of you throw a number at the same time. Match it and you are out. Everyone else guesses along for points.',
+      'Two teams, one number each per ball. Match the batter and they are out. Bowler changes every over.',
     minPlayers: 2,
     maxPlayers: 15,
     estimate: '~10 min an innings',
+    // Engine done and tested; flips to 'ready' when its table lands (5b).
     status: 'soon',
   },
   {
@@ -44,12 +47,14 @@ export const catalogue: GameInfo[] = [
 export const settingsSpecs: Record<string, SettingsSpec> = {
   'last-card': lastCardSettings as SettingsSpec,
   'snakes-ladders': snakesSettings as SettingsSpec,
+  'hand-cricket': handCricketSettings as SettingsSpec,
 };
 
 /** Engines. A game is only startable once it appears here. */
 export const modules: Record<string, GameModule> = {
   'last-card': lastCard as GameModule,
   'snakes-ladders': snakesLadders as GameModule,
+  'hand-cricket': handCricket as GameModule,
 };
 
 export const DEFAULT_GAME_ID = 'last-card';
