@@ -99,7 +99,12 @@ export function createRoomStore(options: StoreOptions = {}) {
 
   function create(input: { name: string; look: unknown; gameId: string }): Outcome<Seat> {
     if (!isValidName(input.name)) return fail('Pick a name first.');
-    if (!isPickable(input.gameId)) return fail('That game is not ready to play yet.');
+    // An empty id is a room nobody has chosen a game for yet, which is how
+    // every room starts — the picker comes after the code, not before it.
+    const gameId = input.gameId || '';
+    if (gameId !== '' && !isPickable(gameId)) {
+      return fail('That game is not ready to play yet.');
+    }
     const at = now();
 
     const host = newPlayer(cleanName(input.name), sanitiseLook(input.look), at);
@@ -108,7 +113,7 @@ export function createRoomStore(options: StoreOptions = {}) {
       hostId: host.id,
       players: [host],
       phase: 'lobby',
-      gameId: input.gameId,
+      gameId,
       settings: settingsSpecs[input.gameId]?.defaults ?? null,
       game: null,
       totals: {},

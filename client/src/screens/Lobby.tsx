@@ -3,7 +3,7 @@ import { MAX_PLAYERS, getGameInfo } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
 import { Head } from '../components/Fighter';
 import { LookPicker } from '../components/LookPicker';
-import { CheckIcon, CopyIcon, LeaveIcon, LinkIcon } from '../components/icons';
+import { CheckIcon, CopyIcon, LinkIcon } from '../components/icons';
 import { useCopy } from '../lib/useCopy';
 import { loadProfile, saveProfile } from '../lib/session';
 import { gamesPath, navigate } from '../lib/route';
@@ -43,6 +43,8 @@ export function Lobby({ room, code }: Props) {
   const seated = view.players.length;
   const emptySeats = Math.max(0, MAX_PLAYERS - seated);
   const enoughPlayers = seated >= (game?.minPlayers ?? 2);
+  // A fresh room has no game until the table picks one.
+  const chosen = Boolean(view.gameId) && Boolean(game);
   const hostName = view.players.find((p) => p.id === view.hostId)?.name ?? 'the host';
 
   return (
@@ -81,14 +83,6 @@ export function Lobby({ room, code }: Props) {
                   {linkCopy.copied ? 'Copied!' : 'Copy invite link'}
                 </button>
 
-                <button
-                  type="button"
-                  className="btn small with-icon leave-btn"
-                  onClick={() => room.leaveRoom()}
-                >
-                  <LeaveIcon />
-                  Leave room
-                </button>
               </div>
             </div>
             {(codeCopy.failed || linkCopy.failed) && (
@@ -148,27 +142,39 @@ export function Lobby({ room, code }: Props) {
         </div>
 
         <aside className="sticker rules">
-          <div className="chosen-game">
-            <span className="cg-emoji" aria-hidden="true">🃏</span>
+          <div className={`chosen-game${chosen ? '' : ' none'}`}>
+            <span className="cg-emoji" aria-hidden="true">{chosen ? '🃏' : '❓'}</span>
             <div>
-              <b>{game?.name ?? view.gameId}</b>
-              <small>{game ? `${game.minPlayers}–${game.maxPlayers} players · ${game.estimate}` : 'Unknown game'}</small>
+              <b>{chosen ? game!.name : 'No game yet'}</b>
+              <small>
+                {chosen
+                  ? `${game!.minPlayers}–${game!.maxPlayers} players · ${game!.estimate}`
+                  : isHost
+                    ? 'Pick one and everyone follows you to it.'
+                    : `${hostName} is choosing.`}
+              </small>
             </div>
             {isHost && (
-              <button type="button" className="btn small" onClick={() => navigate(gamesPath(code))}>
-                Change
+              <button
+                type="button"
+                className={`btn small${chosen ? '' : ' btn-sun'}`}
+                onClick={() => navigate(gamesPath(code))}
+              >
+                {chosen ? 'Change' : 'Pick a game'}
               </button>
             )}
           </div>
 
-          <h2>House rules</h2>
-          <p className="sub">
-            {isHost
-              ? `These belong to ${game?.name ?? 'this game'}. Other games bring their own.`
-              : `${view.players.find((p) => p.id === view.hostId)?.name ?? 'The host'} sets these.`}
-          </p>
+          {chosen && <h2>House rules</h2>}
+          {chosen && (
+            <p className="sub">
+              {isHost
+                ? `These belong to ${game!.name}. Other games bring their own.`
+                : `${hostName} sets these.`}
+            </p>
+          )}
 
-          {Settings ? (
+          {!chosen ? null : Settings ? (
             <Settings
               settings={view.settings}
               canEdit={isHost && view.phase === 'lobby'}
@@ -181,7 +187,7 @@ export function Lobby({ room, code }: Props) {
           <button
             type="button"
             className="btn btn-pink start"
-            disabled={!isHost || !enoughPlayers}
+            disabled={!isHost || !chosen || !enoughPlayers}
             onClick={() => room.startGame()}
           >
             Start game
@@ -189,9 +195,11 @@ export function Lobby({ room, code }: Props) {
           <p className="host-note">
             {!isHost
               ? `You'll see the deal when ${hostName} starts it.`
-              : enoughPlayers
-                ? `Deal ${game?.name ?? 'the game'} for everyone here.`
-                : `${game?.name ?? 'This game'} needs at least ${game?.minPlayers ?? 2} players.`}
+              : !chosen
+                ? 'Pick a game to get going.'
+                : enoughPlayers
+                  ? `Deal ${game!.name} for everyone here.`
+                  : `${game!.name} needs at least ${game!.minPlayers} players.`}
           </p>
 
           {room.error && <p className="form-error" role="alert">{room.error}</p>}

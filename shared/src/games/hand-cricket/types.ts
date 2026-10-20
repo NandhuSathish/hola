@@ -118,11 +118,24 @@ export type HandCricketState = {
   /** Runs the side batting second needs. Null during the first innings. */
   target: number | null;
   ball: BallWindow | null;
+  /**
+   * When the next ball opens. Set while the last one is being told, so the
+   * pick clock does not start under an animation nobody has watched yet.
+   */
+  nextBallAt: number | null;
   /** Bumped per resolved ball, so the client knows an animation is new. */
   seq: number;
   lastBall: ResolvedBall | null;
   settings: HandCricketSettings;
   finished: boolean;
+  /**
+   * The winning side is still on the field. Until this passes the result is
+   * withheld, which is what keeps the room on the table long enough to watch
+   * the last ball and the celebration rather than cutting to a scoreboard.
+   */
+  celebrateUntil: number | null;
+  /** The celebration is over and the scorecard may be shown. */
+  settled: boolean;
   /** Null with the scores level. */
   winnerTeam: 0 | 1 | null;
   /** Filled in when the match ends, for the result screen. */
@@ -180,6 +193,10 @@ export type HandCricketView = {
     waitingOn: string[];
   } | null;
   lastBall: ResolvedBall | null;
+  /** When the next ball opens, for the countdown between them. */
+  nextBallAt: number | null;
+  /** While this is in the future the winners are celebrating on the field. */
+  celebrateUntil: number | null;
   seq: number;
   finished: boolean;
   winnerTeam: 0 | 1 | null;

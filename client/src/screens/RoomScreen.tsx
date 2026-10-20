@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { getGameInfo } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
 import { getGameUI } from '../games';
+import { gamesPath, navigate } from '../lib/route';
 import { Lobby } from './Lobby';
 import { Results } from './Results';
 
@@ -13,8 +15,19 @@ type Props = { room: ReturnType<typeof useRoom>; code: string };
 export function RoomScreen({ room, code }: Props) {
   const view = room.room;
 
+  /*
+   * A room with no game is not a lobby yet, it is a room on its way to the
+   * picker. Everyone goes there — the host to choose, everyone else to watch
+   * them choose — rather than looking at a lobby with a hole where the game
+   * should be.
+   */
+  const needsGame = view !== null && view.phase === 'lobby' && !view.gameId;
+  useEffect(() => {
+    if (needsGame) navigate(gamesPath(code));
+  }, [needsGame, code]);
+
   if (!view || view.phase === 'lobby') {
-    return <Lobby room={room} code={code} />;
+    return needsGame ? null : <Lobby room={room} code={code} />;
   }
 
   if (view.phase === 'results') {

@@ -129,3 +129,6 @@ export function token(name: string, fallback = '#000'): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value || fallback;
 }
+
+/** Clamp to 0..1, for progress values that may overshoot their window. */
+export const c01 = (t: number): number => (t < 0 ? 0 : t > 1 ? 1 : t);

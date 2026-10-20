@@ -28,8 +28,7 @@ export const catalogue: GameInfo[] = [
     minPlayers: 2,
     maxPlayers: 15,
     estimate: '~10 min an innings',
-    // Engine done and tested; flips to 'ready' when its table lands (5b).
-    status: 'soon',
+    status: 'ready',
   },
   {
     id: 'snakes-ladders',

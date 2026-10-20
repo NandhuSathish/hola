@@ -2,7 +2,7 @@ import { catalogue } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
 import { navigate, roomPath } from '../lib/route';
 import { loadProfile } from '../lib/session';
-import { LastCardArt, SnakesArt } from '../components/GameArt';
+import { HandCricketArt, LastCardArt, SnakesArt } from '../components/GameArt';
 import './Games.css';
 
 type Props = {
@@ -14,25 +14,35 @@ type Props = {
 const ART: Record<string, () => React.ReactElement> = {
   'last-card': LastCardArt,
   'snakes-ladders': SnakesArt,
+  'hand-cricket': HandCricketArt,
 };
 
 export function Games({ room, code }: Props) {
-  const changing = code !== null;
+  const inRoom = code !== null;
+  const view = room.room;
+  // Outside a room you are about to be the host of one, so you may pick.
+  const isHost = !inRoom || !view || view.hostId === room.me;
+  // A room that has not chosen yet has no lobby to go back to.
+  const chosen = Boolean(view?.gameId);
+  const hostName = view?.players.find((p) => p.id === view.hostId)?.name ?? 'The host';
 
   function pick(gameId: string) {
-    if (changing) room.setGame(gameId);
+    if (!isHost) return;
+    if (inRoom) room.setGame(gameId);
     else room.createRoom(loadProfile(), gameId);
   }
 
   return (
     <main className="games-screen">
       <div className="games-head">
-        <h1>Pick a game</h1>
+        <h1>{isHost ? 'Pick a game' : 'Choosing a game'}</h1>
         <p>
-          Your room, seats and voice chat stay the same whichever one you choose.
-          {changing ? ' Changing it resets the house rules.' : ' The host can change it any time before the deal.'}
+          {isHost
+            ? 'Your room and seats stay the same whichever one you choose.'
+            : `${hostName} is picking. Everyone lands in it together.`}
+          {isHost && chosen && ' Changing it resets the house rules.'}
         </p>
-        {changing && (
+        {inRoom && chosen && (
           <button type="button" className="btn small" onClick={() => navigate(roomPath(code))}>
             Back to the lobby
           </button>
@@ -62,11 +72,17 @@ export function Games({ room, code }: Props) {
                 </div>
                 <button
                   type="button"
-                  className={`btn${soon ? '' : ' btn-pink'}`}
-                  disabled={soon || room.busy}
+                  className={`btn${soon || !isHost ? '' : ' btn-pink'}`}
+                  disabled={soon || !isHost || room.busy}
                   onClick={() => pick(game.id)}
                 >
-                  {soon ? 'Coming soon' : changing ? `Switch to ${game.name}` : `Play ${game.name}`}
+                  {soon
+                    ? 'Coming soon'
+                    : !isHost
+                      ? `${hostName} decides`
+                      : chosen
+                        ? `Switch to ${game.name}`
+                        : `Play ${game.name}`}
                 </button>
               </div>
             </article>

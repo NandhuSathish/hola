@@ -252,3 +252,21 @@
   .pgrid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
   .rules { padding: 20px; }
 }
+
+
+/*
+ * An unchosen room explains itself in a sentence, which does not fit on one
+ * clipped line the way "2–15 players · ~10 min" does.
+ */
+.chosen-game.none {
+  background: var(--paper);
+  border-style: dashed;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.chosen-game.none small {
+  overflow: visible;
+  white-space: normal;
+  line-height: 1.3;
+}

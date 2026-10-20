@@ -57,6 +57,8 @@ type HeadOptions = {
   /** Carried through so the face shifts with the body's facing. */
   fy: number;
   t: number;
+  /** Skull and face only. A helmet or an umpire's hat covers the rest. */
+  bare?: boolean;
 };
 
 const styleHat = (style: (typeof STYLES)[number]): string =>
@@ -94,7 +96,7 @@ export function drawHead(
   const hat = styleHat(style);
   const skin = SKINS[look.skin] ?? SKINS[0];
   const hair = HAIRS[look.hair] ?? HAIRS[0];
-  const { side, back } = o;
+  const { side, back, bare } = o;
   const R = 16;
 
   // pieces that sit behind the skull
@@ -134,6 +136,89 @@ export function drawHead(
   ctx.beginPath();
   ctx.arc(0, hy, R, 0, Math.PI * 2);
   blob(ctx, skin, 3.5);
+
+  // Pulled out so a helmet can borrow it: a bare head is the skull and
+  // the face, and nothing above the eyebrows.
+  const drawFace = (): void => {
+    // face
+    const ox = o.front ? 0 : side * 4.5;
+    const oy = o.fy ? o.fy * 1.5 : 0;
+    const ey = hy + 2 + oy;
+
+    ctx.fillStyle = 'rgba(255,95,168,.45)';
+    for (const bx of [-9, 9]) {
+      ctx.beginPath();
+      ctx.ellipse(ox + bx, hy + 7 + oy, 3.4, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = INK;
+    ctx.fillStyle = INK;
+    ctx.lineWidth = 2.4;
+    for (const ex of [-5.5, 5.5]) {
+      const x = ox + ex;
+      if (o.mood === 'dizzy') {
+        ctx.beginPath();
+        ctx.arc(x, ey, 3.4, 0, Math.PI * 1.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, ey, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (o.mood === 'hurt') {
+        const d = ex < 0 ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(x - 2.6 * d, ey - 3);
+        ctx.lineTo(x + 2.4 * d, ey);
+        ctx.lineTo(x - 2.6 * d, ey + 3);
+        ctx.stroke();
+      } else if (o.blink) {
+        ctx.beginPath();
+        ctx.moveTo(x - 2.6, ey);
+        ctx.lineTo(x + 2.6, ey);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(x, ey, 2.6, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(x - 0.9, ey - 1.3, 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = INK;
+      }
+      if (o.mood === 'punch') {
+        const d = ex < 0 ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(x - 3.4 * d, ey - 7);
+        ctx.lineTo(x + 2.8 * d, ey - 4.5);
+        ctx.stroke();
+      }
+    }
+
+    const my = hy + 9 + oy;
+    if (o.mood === 'punch') {
+      ctx.beginPath();
+      ctx.ellipse(ox, my, 3, 2.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (o.mood === 'hurt' || o.mood === 'dizzy') {
+      ctx.beginPath();
+      ctx.moveTo(ox - 4, my);
+      ctx.quadraticCurveTo(ox - 2, my - 2.5, ox, my);
+      ctx.quadraticCurveTo(ox + 2, my + 2.5, ox + 4, my);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(ox, my - 1.5, 3.2, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+    }
+
+  };
+
+  if (bare) {
+    // Everything above the eyebrows is about to be covered, so stop here.
+    if (!back) drawFace();
+    return;
+  }
 
   if (back) {
     if (style.id === 'cap') {
@@ -198,78 +283,7 @@ export function drawHead(
     return;
   }
 
-  // face
-  const ox = o.front ? 0 : side * 4.5;
-  const oy = o.fy ? o.fy * 1.5 : 0;
-  const ey = hy + 2 + oy;
-
-  ctx.fillStyle = 'rgba(255,95,168,.45)';
-  for (const bx of [-9, 9]) {
-    ctx.beginPath();
-    ctx.ellipse(ox + bx, hy + 7 + oy, 3.4, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.strokeStyle = INK;
-  ctx.fillStyle = INK;
-  ctx.lineWidth = 2.4;
-  for (const ex of [-5.5, 5.5]) {
-    const x = ox + ex;
-    if (o.mood === 'dizzy') {
-      ctx.beginPath();
-      ctx.arc(x, ey, 3.4, 0, Math.PI * 1.6);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(x, ey, 1.3, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (o.mood === 'hurt') {
-      const d = ex < 0 ? 1 : -1;
-      ctx.beginPath();
-      ctx.moveTo(x - 2.6 * d, ey - 3);
-      ctx.lineTo(x + 2.4 * d, ey);
-      ctx.lineTo(x - 2.6 * d, ey + 3);
-      ctx.stroke();
-    } else if (o.blink) {
-      ctx.beginPath();
-      ctx.moveTo(x - 2.6, ey);
-      ctx.lineTo(x + 2.6, ey);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.ellipse(x, ey, 2.6, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(x - 0.9, ey - 1.3, 1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = INK;
-    }
-    if (o.mood === 'punch') {
-      const d = ex < 0 ? 1 : -1;
-      ctx.beginPath();
-      ctx.moveTo(x - 3.4 * d, ey - 7);
-      ctx.lineTo(x + 2.8 * d, ey - 4.5);
-      ctx.stroke();
-    }
-  }
-
-  const my = hy + 9 + oy;
-  if (o.mood === 'punch') {
-    ctx.beginPath();
-    ctx.ellipse(ox, my, 3, 2.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (o.mood === 'hurt' || o.mood === 'dizzy') {
-    ctx.beginPath();
-    ctx.moveTo(ox - 4, my);
-    ctx.quadraticCurveTo(ox - 2, my - 2.5, ox, my);
-    ctx.quadraticCurveTo(ox + 2, my + 2.5, ox + 4, my);
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.arc(ox, my - 1.5, 3.2, 0.15 * Math.PI, 0.85 * Math.PI);
-    ctx.stroke();
-  }
-
+  drawFace();
   // hair and hats, over the face
   if (style.id === 'cap') {
     hairCap(ctx, hat, hy, side, 17.5, 1);

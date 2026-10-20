@@ -11,10 +11,8 @@ export function App() {
   const room = useRoom(code);
 
   const view = room.room;
-  // The lobby carries its own leave beside the invite link, so the bar only
-  // offers one where the screen underneath has no other way out — which,
-  // before this, mid-game meant closing the tab.
-  const needsLeave = Boolean(view) && view?.phase !== 'lobby';
+  // One way out, in the one place that is on every screen.
+  const inRoom = Boolean(view);
 
   return (
     <>
@@ -22,7 +20,7 @@ export function App() {
         code={view?.code ?? code}
         gameId={view?.gameId ?? null}
         connection={room.connection}
-        onLeave={needsLeave ? () => room.leaveRoom() : undefined}
+        onLeave={inRoom ? () => room.leaveRoom() : undefined}
       />
       <Screen route={route} room={room} />
     </>

@@ -44,23 +44,44 @@ export function createGameRunner(deps: RunnerDeps = {}) {
   function start(room: Room): Outcome<{ events: GameEvent[] }> {
     if (room.phase !== 'lobby') return fail('The game has already started.');
 
+    if (!room.gameId) return fail('Pick a game first.');
+
     const game = moduleFor(room);
     if (!game) return fail('That game is not ready to play yet.');
 
     // Everyone sitting out rejoins the table for a fresh deal.
     for (const player of room.players) player.spectator = false;
 
-    const players = seatedRefs(room);
-    if (players.length < game.minPlayers) {
+    if (room.players.length < game.minPlayers) {
       return fail(`${game.name} needs at least ${game.minPlayers} players.`);
     }
-    if (players.length > game.maxPlayers) {
-      return fail(`${game.name} tops out at ${game.maxPlayers} players.`);
-    }
 
+    /*
+     * A room is a room, not a table. People pick a game after they are all
+     * in, so a full room and a game that seats fewer is the normal case, not
+     * an error — the ones past the limit sit this round out rather than the
+     * host being told to go and ask somebody to leave.
+     *
+     * Longest-waiting first, so the same people are not always the ones
+     * standing, and the round after this one deals everyone back in.
+     */
+    const byArrival = [...room.players].sort((a, b) => a.joinedAt - b.joinedAt);
+    const standing = byArrival.slice(game.maxPlayers);
+    for (const player of standing) player.spectator = true;
+
+    const players = seatedRefs(room);
     room.game = game.setup(players, room.settings, ctx());
     room.phase = 'playing';
-    return ok({ events: [{ kind: 'deal', text: 'a new round was dealt' }] });
+
+    const events: GameEvent[] = [{ kind: 'deal', text: 'a new round was dealt' }];
+    if (standing.length > 0) {
+      const who = standing.map((p) => p.name).join(', ');
+      events.push({
+        kind: 'standing',
+        text: `${game.name} seats ${game.maxPlayers}, so ${who} ${standing.length === 1 ? 'is' : 'are'} watching this round.`,
+      });
+    }
+    return ok({ events });
   }
 
   function act(room: Room, playerId: string, action: unknown): Outcome<{ events: GameEvent[] }> {

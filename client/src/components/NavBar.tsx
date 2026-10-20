@@ -35,7 +35,6 @@ const GAME_COLOUR: Record<string, string> = {
 export function NavBar({ code, gameId, connection = 'connected', onLeave }: Props) {
   const { copied, copy } = useCopy();
   const game = gameId ? getGameInfo(gameId) : undefined;
-  const hasActions = Boolean(game || code || onLeave || connection !== 'connected');
 
   return (
     <header className="navbar">
@@ -48,9 +47,9 @@ export function NavBar({ code, gameId, connection = 'connected', onLeave }: Prop
         holla!
       </button>
 
-      {/* The pill is a thing in its own right, so an empty one would read as
-          a stray dot in the corner rather than as nothing. */}
-      {hasActions && <div className="nav-right">
+      {/* Each of these is its own sticker, so the group needs no shape of
+          its own and an empty one simply is not there. */}
+      <div className="nav-right">
         {game && (
           <span
             className="nav-game"
@@ -89,7 +88,7 @@ export function NavBar({ code, gameId, connection = 'connected', onLeave }: Prop
             <span>Leave</span>
           </button>
         )}
-      </div>}
+      </div>
     </header>
   );
 }

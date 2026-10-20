@@ -53,6 +53,13 @@ describe('starting a round', () => {
     expect(view(r, r.hostId).seats).toHaveLength(4);
   });
 
+  it('refuses to deal before anyone has picked a game', () => {
+    const { room: r } = room(3);
+    r.gameId = '';
+    expect(runner.start(r)).toEqual({ ok: false, error: 'Pick a game first.' });
+    expect(r.phase).toBe('lobby');
+  });
+
   it('refuses a game with no engine behind it', () => {
     const { room: r } = room(3);
     r.gameId = 'buckaroo';
@@ -65,6 +72,38 @@ describe('starting a round', () => {
     const res = runner.start(r);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain('at least 2');
+  });
+
+  it('sits the extras out rather than refusing a room bigger than the game', () => {
+    const { room: r } = room(10);
+    r.gameId = 'snakes-ladders'; // seats 8
+    const res = runner.start(r);
+
+    expect(res.ok).toBe(true);
+    expect(r.phase).toBe('playing');
+
+    const watching = r.players.filter((p) => p.spectator);
+    expect(watching).toHaveLength(2);
+    // the two newest arrivals are the ones standing
+    const byArrival = [...r.players].sort((a, b) => a.joinedAt - b.joinedAt);
+    expect(watching.map((p) => p.id).sort()).toEqual(
+      byArrival.slice(8).map((p) => p.id).sort(),
+    );
+    if (res.ok) {
+      expect(res.value.events.some((e) => e.kind === 'standing')).toBe(true);
+    }
+  });
+
+  it('deals everyone back in on the next round', () => {
+    const { room: r } = room(10);
+    r.gameId = 'snakes-ladders';
+    runner.start(r);
+    expect(r.players.filter((p) => p.spectator)).toHaveLength(2);
+
+    r.phase = 'lobby';
+    r.gameId = 'last-card'; // seats 15
+    runner.start(r);
+    expect(r.players.filter((p) => p.spectator)).toHaveLength(0);
   });
 
   it('refuses to deal twice', () => {

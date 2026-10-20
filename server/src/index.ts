@@ -223,8 +223,12 @@ io.on('connection', (socket) => {
       ack({ ok: false, error: res.error });
       return;
     }
-    ack({ ok: true });
+    // Broadcast before the ack: the client navigates to the lobby off the
+    // back of this, and a lobby that has not heard about the new game yet
+    // bounces straight back to the picker. Socket.io keeps a connection's
+    // messages in order, so sending the state first is enough.
     broadcast(res.value.code);
+    ack({ ok: true });
   });
 
   socket.on('room:settings', (patch, ack) => {

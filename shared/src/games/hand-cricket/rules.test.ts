@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { handCricket } from './index.js';
 import { HAND_CRICKET_DEFAULTS, type HandCricketSettings } from './settings.js';
+import { CELEBRATION_MS } from './rules.js';
 import {
   getPlayerView,
   onAction,
@@ -72,13 +73,33 @@ function playing(
   return ok(act(state, captain, { type: 'choose', bat: wantsToBat }));
 }
 
-/** Bowl one ball with both numbers given. */
+/**
+ * Bowl one ball with both numbers given, then skip the gap the server leaves
+ * for the client to tell it. Tests do not watch animations.
+ */
 function bowl(state: HandCricketState, bat: Pick, bowlNum: Pick, now = 0): HandCricketState {
   const ball = state.ball!;
   let next = ok(act(state, ball.batterId, { type: 'pick', ballId: ball.id, value: bat }, now));
-  if (!next.ball || next.ball.id !== ball.id) return next; // one-a-side resolves at once
-  next = ok(act(next, ball.bowlerId, { type: 'pick', ballId: ball.id, value: bowlNum }, now));
-  return next;
+  // one-a-side resolves on the single pick, so only ask for the second if the
+  // same ball is still open
+  if (next.ball && next.ball.id === ball.id) {
+    next = ok(act(next, ball.bowlerId, { type: 'pick', ballId: ball.id, value: bowlNum }, now));
+  }
+  return skipGap(next);
+}
+
+/** Wind the clock past the celebration so the scorecard is handed back. */
+function settle(state: HandCricketState): HandCricketState {
+  if (!state.finished || state.settled || state.celebrateUntil === null) return state;
+  const ticked = onTick(state, ctx(state.celebrateUntil, seeded()));
+  return ticked ? ticked.state : state;
+}
+
+/** Wind the clock past the between-balls gap and put the next ball live. */
+function skipGap(state: HandCricketState): HandCricketState {
+  if (state.ball || state.finished || state.nextBallAt === null) return state;
+  const ticked = onTick(state, ctx(state.nextBallAt, seeded()));
+  return ticked ? ticked.state : state;
 }
 
 // ---------------------------------------------------------------- teams
@@ -224,11 +245,38 @@ describe('a ball', () => {
     );
   });
 
-  it('opens the next ball straight away', () => {
-    const state = bowl(playing(), 2, 1);
-    expect(state.ball).not.toBeNull();
-    expect(state.ball!.id).not.toBe('');
+  it('leaves a gap before the next ball, so the clock does not run under the telling', () => {
+    const start = playing();
+    const ball = start.ball!;
+    let state = ok(act(start, ball.batterId, { type: 'pick', ballId: ball.id, value: 2 }));
+    state = ok(act(state, ball.bowlerId, { type: 'pick', ballId: ball.id, value: 1 }));
+
+    expect(state.ball).toBeNull();
+    expect(state.nextBallAt).toBeGreaterThan(0);
     expect(state.seq).toBe(1);
+
+    // nothing happens until the gap is up
+    expect(onTick(state, ctx(state.nextBallAt! - 1))).toBeNull();
+
+    const live = onTick(state, ctx(state.nextBallAt!))!;
+    expect(live.state.ball).not.toBeNull();
+    expect(live.state.nextBallAt).toBeNull();
+    // and the fresh window gets its full length
+    expect(live.state.ball!.endsAt - live.state.ball!.startedAt).toBe(
+      HAND_CRICKET_DEFAULTS.pickSeconds * 1000,
+    );
+  });
+
+  it('gives the side coming in time to settle at the innings change', () => {
+    let state = playing(4, 0, { overs: 1 });
+    for (let i = 0; i < 5; i++) state = bowl(state, 2, 4);
+    const ball = state.ball!;
+    state = ok(act(state, ball.batterId, { type: 'pick', ballId: ball.id, value: 2 }));
+    state = ok(act(state, ball.bowlerId, { type: 'pick', ballId: ball.id, value: 4 }));
+
+    expect(state.innings).toHaveLength(2);
+    expect(state.ball).toBeNull();
+    expect(state.nextBallAt).toBeGreaterThan(0);
   });
 });
 
@@ -327,11 +375,31 @@ describe('the pick window', () => {
     expect(ticked!.state.lastBall?.autoBowl).toBe(true);
   });
 
-  it('does nothing once the match is over', () => {
+  it('keeps the winners on the field, then lets the scorecard through', () => {
     let state = playing(2, 0, { overs: 1 });
     for (let i = 0; i < 24 && !state.finished; i++) state = bowl(state, 2, 4);
     expect(state.finished).toBe(true);
-    expect(onTick(state, ctx(1e12))).toBeNull();
+    expect(state.settled).toBe(false);
+    expect(state.celebrateUntil).toBeGreaterThan(0);
+
+    // the room stays on the table while they celebrate
+    expect(handCricket.getResult(state)).toBeNull();
+    expect(onTick(state, ctx(state.celebrateUntil! - 1))).toBeNull();
+
+    const over = onTick(state, ctx(state.celebrateUntil!))!;
+    expect(over.state.settled).toBe(true);
+    expect(handCricket.getResult(over.state)).not.toBeNull();
+
+    // and nothing happens after that
+    expect(onTick(over.state, ctx(1e12))).toBeNull();
+  });
+
+  it('leaves time for the ball that won it, not just the party', () => {
+    let state = playing(2, 0, { overs: 1 });
+    for (let i = 0; i < 24 && !state.finished; i++) state = bowl(state, 2, 4);
+    const lastBallAt = state.celebrateUntil! - CELEBRATION_MS;
+    // the telling of the final ball sits in front of the ten seconds
+    expect(lastBallAt).toBeGreaterThan(0);
   });
 });
 
@@ -491,6 +559,7 @@ describe('the result', () => {
     let state = playing(4, 0, { overs: 1 });
     for (let i = 0; i < 6; i++) state = bowl(state, 6, 1);
     for (let i = 0; i < 6; i++) state = bowl(state, 0, 1);
+    state = settle(state);
     const result = handCricket.getResult(state)!;
 
     expect(result.winnerId).toBe(state.teams[0][0]);
@@ -503,7 +572,7 @@ describe('the result', () => {
     let state = playing(4, 0, { overs: 1 });
     for (let i = 0; i < 6; i++) state = bowl(state, 2, 4);
     for (let i = 0; i < 6; i++) state = bowl(state, 2, 4);
-    const result = handCricket.getResult(state)!;
+    const result = handCricket.getResult(settle(state))!;
     expect(result.scores.every((s) => s.points === 0)).toBe(true);
   });
 
@@ -511,7 +580,7 @@ describe('the result', () => {
     let state = playing(4, 0, { overs: 1 });
     for (let i = 0; i < 6; i++) state = bowl(state, 2, 4);
     for (let i = 0; i < 6; i++) state = bowl(state, 0, 1);
-    const result = handCricket.getResult(state)!;
+    const result = handCricket.getResult(settle(state))!;
     const total = result.scores.reduce((sum, s) => sum + s.cardsLeft, 0);
     expect(total).toBe(12);
   });
@@ -535,8 +604,10 @@ describe('the engine is pure', () => {
       state = ok(act(state, state.toss.callerId, { type: 'call', side: 'heads' }, 0, seeded(7)));
       const captain = state.teams[state.toss.winner!][0]!;
       state = ok(act(state, captain, { type: 'choose', bat: true }, 0, seeded(7)));
-      for (let i = 0; i < 24 && !state.finished; i++) {
-        const ticked = onTick(state, { now: state.ball!.endsAt, rng: seeded(i + 7) });
+      for (let i = 0; i < 60 && !state.finished; i++) {
+        const at = state.ball ? state.ball.endsAt : state.nextBallAt;
+        if (at === null) break;
+        const ticked = onTick(state, { now: at, rng: seeded(i + 7) });
         if (!ticked) break;
         state = ticked.state;
       }

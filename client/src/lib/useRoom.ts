@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Ack, AckWith, GameEvent, LastCardView, RoomView, Look, RoundResult, Seat } from '@holla/shared';
 import { socket, type ConnectionState } from './socket';
 import { clearSeat, loadSeat, saveSeat, type Profile } from './session';
-import { navigate, roomPath } from './route';
+import { gamesPath, navigate, roomPath } from './route';
 
 type State = {
   connection: ConnectionState;
@@ -119,7 +119,7 @@ export function useRoom(codeFromUrl: string | null) {
   }, [codeFromUrl, rejoin]);
 
   const createRoom = useCallback(
-    (profile: Profile, gameId = 'last-card') => {
+    (profile: Profile, gameId = '') => {
       patch({ busy: true, error: null });
       socket.emit(
         'room:create',
@@ -131,7 +131,9 @@ export function useRoom(codeFromUrl: string | null) {
           }
           saveSeat(res);
           patch({ busy: false, me: res.playerId });
-          navigate(roomPath(res.code));
+          // Straight to the picker when nobody has chosen yet, so the room
+          // exists but the game is still the table's to decide.
+          navigate(gameId ? roomPath(res.code) : gamesPath(res.code));
         },
       );
     },

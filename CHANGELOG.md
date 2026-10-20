@@ -9,6 +9,181 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 5h — three buttons, not one pill
+
+The bar's right-hand side was a single cream pill with the game, the code
+and Leave as segments inside it. They are three separate stickers now, each
+with its own edge and shadow: copying a code and walking out of a room are
+not two halves of the same control, and a red Leave sharing an edge with the
+code is an easy mis-tap. The game chip stays flatter than the two buttons,
+because it is a label rather than something to press.
+
+#### Fixed on the way
+
+- `.claude/launch.json` is attach-only now. Starting the dev server from it
+  injects `PORT=5173`, which made the API server take Vite's port and refuse
+  its own websocket proxy — the client sat on "Connecting…" forever.
+
+### Phase 5g — the picker is the first room screen
+
+The "No game yet" card was a placeholder for a page the room should simply be
+on. A room with no game now goes to the picker instead of to a lobby with a
+hole in it, for everyone in it — the host to choose, the rest to watch them
+choose, with the game list named after who is deciding and the buttons dead
+for anyone who is not the host.
+
+- **Leave moved to the bar.** It is on every room screen now, including the
+  lobby and the picker, so the room code and the way out are always in the
+  same place. The lobby's own Leave is gone; the code row is the two copies.
+- **Hand Cricket has cover art** — two number tiles, stumps and a ball. The
+  picker was showing it as an empty panel, which is a poor advert for a game
+  someone is being asked to choose.
+
+#### Fixed on the way
+
+- Picking a game bounced straight back to the picker. `room:setGame` acked
+  before it broadcast, so the lobby rendered against a view that had not
+  heard about the new game and the redirect sent it back. The state goes
+  first now; Socket.io keeps a connection's messages in order, so that is
+  enough.
+
+### Phase 5f — a room with no game yet
+
+Last phase moved room creation ahead of the game picker but still stamped
+Last Card on the way past, so a room arrived with a game nobody had chosen.
+`gameId` starts empty now and means exactly that: creating a room takes you
+to the picker *inside* the room, with the code already in the bar.
+
+- The lobby shows a dashed "No game yet" card with a **Pick a game** button
+  instead of pretending one was chosen, hides the house rules until there
+  are some, and will not deal: "Pick a game to get going."
+- `start` says "Pick a game first" rather than the misleading "that game is
+  not ready to play yet", which is about a game that exists but is not built.
+
+**The celebration was too long.** Ten seconds of jumping is a long time to
+wait for a scorecard when the ball before it already took four to tell.
+Halved to 4.5s, so the whole tail is about eight seconds rather than fifteen.
+
+### Phase 5e — let the last ball finish, then celebrate
+
+**The match ended before the ball that ended it.** The engine declared a
+result the instant the final ball resolved, the runner moved the room to
+results, and the scorecard replaced the table — so the winning six, or the
+wicket that sealed it, was never seen by anyone.
+
+The fix is in the engine, where "finished" and "over" are now two different
+things. A finished match sets `celebrateUntil`, and `getResult` returns null
+until `onTick` settles it, which is what keeps the room on the table: the
+runner only moves to results when the module hands back a scorecard. The
+window is the telling of the last ball plus ten seconds.
+
+**The celebration is its own thing, not a bigger six.** A six is one batter
+punching the air for a beat; this is the whole winning side spread across the
+ground, jumping out of phase with each other, the stumps pulled, caps going
+up and the crowd on its feet for the duration. The chips over the ground go
+away — there is no next ball to name — and the picker is replaced by the
+result and a line saying the scorecard is coming.
+
+Measured end to end: last ball told at 15.4s, win card up, scorecard at
+26.3s — eleven seconds of field before the room moves on. Walking off is the
+one exception: there is nothing to watch, so it settles at once.
+
+### Phase 5d — a gap between balls, and the room before the game
+
+**The pick clock was already running under the animation.** The server opened
+the next ball the instant it resolved the last one, so by the time you had
+watched a six sail into the crowd, three of your seven seconds were gone. Last
+phase I kept the picker live on purpose and called it fairness; it was the
+wrong call, and the fix belongs in the engine rather than the client.
+
+A ball now leaves a gap: `gapAfter(outcome)` is how long the telling takes —
+the run-up, the shot, the ball reaching the rope — plus a beat to read the
+score. `onTick` opens the next window when the gap is up, so every pick clock
+starts at its full length for everyone. The innings change gets a longer one.
+The table shows "Get ready…", a counting "Next ball 3", and a greyed picker,
+because a pause nobody can see is just a frozen screen.
+
+The client's animation is tuned to fit inside those numbers, which is written
+down where the numbers are.
+
+**The room now exists before a game is chosen.** Creating a room took you to
+the game picker first and only made the code once you had chosen, which is
+backwards: the room is the thing people join, and the game is something the
+table decides together. **Create a room** goes straight to a lobby with a code
+in the bar, and the game is picked from inside it with **Change**, same as it
+always could be.
+
+**A room bigger than the game no longer refuses to deal.** Ten people in a
+room and a game that seats eight used to be an error telling the host to go
+and ask someone to leave. The extras sit the round out instead — longest-
+waiting first, so it is not the same people every time — the log says who is
+standing, and the next round deals everyone back in.
+
+#### Fixed on the way
+
+- The bowling chip read "Someone" between balls, since there is no live ball
+  to take a name from. It keeps whoever just bowled.
+
+### Phase 5c — the score waits for the ball, and the mock's toss
+
+Two things the first cut got wrong.
+
+**The result was given away before the ball was bowled.** The server resolves
+a ball the instant both numbers are in, and the table rendered that straight
+off — so the scoreboard read 17 for 1 while the bowler was still running in,
+and the stamp said "Out!" over a batter who had not played a shot yet. The
+figures, over strip, card and commentary now come from a view held one
+animation behind, catching up only when the ball has finished playing out,
+and the stamp waits for the moment it belongs to: "Out!" as the stumps break
+at 1.86s, "Four!" as the ball reaches the rope at 2.35s.
+
+The picker and its clock deliberately do *not* lag. The next ball's window is
+already open on the server, and holding it back would hand the slow half of
+the room a shorter turn. The ground shows the ball being told; the buttons
+below it are for the ball coming.
+
+**The toss is the mock's now.** "Toss time", the two captains either side with
+name pills in their colours, and a 190px coin that goes up 120px, turns five
+times and comes down on a face — heads in sun with the wordmark, tails in
+mint with a bat and ball. The result is held until it lands: until then the
+page says "In the air…", because the server knew the answer the moment it was
+called and the flip is only the telling of it.
+
+### Phase 5b — the Hand Cricket table
+
+The third game is playable. Ported from `design/hand-cricket-mock.html`.
+
+**The ground** (`stadium.ts`). Sky, drifting clouds, floodlights, a packed
+crowd that gets to its feet for a six, hoardings, a banded outfield, the
+pitch, and stumps that burst with the bails flying. Drawn in a fixed
+400-unit-tall world and scaled to the canvas, so the ball's flight can be
+written in real numbers: the bounce, the carry, a six's bezier into the
+crowd, a four skidding to the rope, and for one, two or three the throw out
+to a fielder and back to the keeper.
+
+**The cricketers** (`people.ts`). A different body from the boxer — profile,
+pads, gloves, bat, helmet — but it borrows the same head, so you are
+recognisably yourself whichever game you are in. `drawHead` gained `bare` for
+where a helmet or an umpire's hat is about to cover the top of it. Poses for
+the batter (stance, swing per shot, running, celebrating, slumping), the
+bowler (run-up, delivery, follow-through, appeal, despair), the keeper, the
+umpire's signals and the fielders.
+
+**The table.** The mock's three columns: scorecard left, picker centre,
+this-over and commentary right, with the scorebar above and the ground below
+it. Both tiles over the scene show a `?` until a ball closes — your own
+number fills in as soon as you throw it, theirs stays shut.
+
+**The toss** gets its own screen, since most of the room is only watching it.
+
+The ball is replayed on each client's own clock. The server decided it long
+ago, so nothing waits for the animation — a slow tab sees a shorter version
+of the same ball, not a different one, and reduced motion skips to the stamp.
+
+The catalogue entry flips to `ready` and the two registry lines go in. Rule 4
+held again: nothing in `server/src`, `App.tsx`, `useRoom.ts` or `events.ts`
+was touched to add a third game.
+
 ### Phase 5a — the Hand Cricket engine
 
 Two teams, a toss, two innings, the second chasing. Each ball the striker and

@@ -3,7 +3,7 @@ import { NAME_MAX_LENGTH, isValidRoomCode, normaliseRoomCode } from '@holla/shar
 import { LookRows, LookStage } from '../components/LookPicker';
 import { loadProfile, saveProfile } from '../lib/session';
 import { useRoom } from '../lib/useRoom';
-import { gamesPath, navigate } from '../lib/route';
+
 import './Home.css';
 
 type Props = { room: ReturnType<typeof useRoom> };
@@ -61,7 +61,7 @@ export function Home({ room }: Props) {
             type="button"
             className="btn btn-pink big"
             disabled={!nameOk || room.busy || room.connection !== 'connected'}
-            onClick={() => navigate(gamesPath())}
+            onClick={() => room.createRoom(profile)}
           >
             Create a room
           </button>

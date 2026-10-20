@@ -16,6 +16,7 @@ export type Seat = {
   secret: string;
 };
 
+/** `gameId` is empty for a fresh room: the game is chosen from inside it. */
 export type CreateRoomInput = { name: string; look: Look; gameId: string };
 export type JoinRoomInput = { code: string; name: string; look: Look };
 export type RejoinRoomInput = { code: string; playerId: string; secret: string };

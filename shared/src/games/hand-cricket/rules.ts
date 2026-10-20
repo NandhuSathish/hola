@@ -33,6 +33,45 @@ import {
 } from './types.js';
 
 type Ctx = { now: number; rng: () => number };
+
+/**
+ * The gap between balls.
+ *
+ * A ball takes a few seconds to tell — the run-up, the shot, the ball going
+ * to the rope — and the next pick window must not open underneath it, or the
+ * clock is already half gone by the time you have seen what happened. These
+ * are how long the telling takes, and the client's animation is tuned to fit
+ * inside them; `BREATHER_MS` is the beat afterwards to read the score and
+ * get your hand ready.
+ */
+const BREATHER_MS = 1300;
+
+const tellingMs = (outcome: Outcome): number =>
+  outcome === 'W'
+    ? 4100
+    : outcome === 6
+      ? 4300
+      : outcome === 4
+        ? 4100
+        : outcome === 0
+          ? 3500
+          : 1950 + 550 * outcome + 1250;
+
+/** How long after a ball before the next one is live. */
+export const gapAfter = (outcome: Outcome): number => tellingMs(outcome) + BREATHER_MS;
+
+/** The pause at the innings change, which has more to take in. */
+export const INNINGS_BREAK_MS = 5200;
+
+/**
+ * How long the winners stay on the field.
+ *
+ * The match is decided the moment the last ball resolves, but cutting to a
+ * scorecard then means nobody sees the ball that won it. The result is
+ * withheld for the telling of that ball plus a few seconds of celebration, and
+ * only then does the room move on.
+ */
+export const CELEBRATION_MS = 4500;
 type Ok = { ok: true; state: HandCricketState; events: GameEvent[] };
 type Err = { ok: false; error: string };
 
@@ -101,10 +140,13 @@ export function setup(
     innings: [],
     target: null,
     ball: null,
+    nextBallAt: null,
     seq: 0,
     lastBall: null,
     settings: { ...HAND_CRICKET_DEFAULTS, ...settings },
     finished: false,
+    celebrateUntil: null,
+    settled: false,
     winnerTeam: null,
     summary: null,
   };
@@ -163,13 +205,16 @@ function openBall(state: HandCricketState, ctx: Ctx): void {
   const innings = live(state);
   if (!innings || innings.done || state.finished) {
     state.ball = null;
+    state.nextBallAt = null;
     return;
   }
   const batter = strikerOf(innings);
   if (!batter) {
     state.ball = null;
+    state.nextBallAt = null;
     return;
   }
+  state.nextBallAt = null;
   state.ball = {
     id: id(ctx.rng),
     startedAt: ctx.now,
@@ -298,8 +343,11 @@ function resolveBall(
   state.seq += 1;
   state.ball = null;
 
-  closeIfOver(state, innings, ctx, events);
-  if (!state.finished && !innings.done) openBall(state, ctx);
+  closeIfOver(state, innings, ctx, events, tellingMs(outcome));
+  // The next one waits for this one to be told.
+  if (!state.finished && !innings.done) {
+    state.nextBallAt = ctx.now + gapAfter(outcome);
+  }
 }
 
 function commentaryFor(outcome: Outcome, bat: Pick, bowl: Pick): string {
@@ -316,6 +364,7 @@ function closeIfOver(
   innings: Innings,
   ctx: Ctx,
   events: GameEvent[],
+  tellMs: number,
 ): void {
   const maxBalls = state.settings.overs * BALLS_PER_OVER;
   const allOut = innings.wickets >= wicketsAvailable(state.teams[innings.battingTeam].length);
@@ -334,14 +383,22 @@ function closeIfOver(
       text: `Innings over — ${innings.runs} for ${innings.wickets}. Team ${next + 1} need ${state.target} to win.`,
     });
     state.innings.push(newInnings(state, next));
-    openBall(state, ctx);
+    state.ball = null;
+    state.nextBallAt = ctx.now + INNINGS_BREAK_MS;
     return;
   }
 
-  finishMatch(state, innings, events);
+  finishMatch(state, innings, ctx, events, tellMs);
 }
 
-function finishMatch(state: HandCricketState, second: Innings, events: GameEvent[]): void {
+function finishMatch(
+  state: HandCricketState,
+  second: Innings,
+  ctx: Ctx,
+  events: GameEvent[],
+  /** How long the ball that ended it takes to tell. */
+  tellMs: number,
+): void {
   const target = state.target ?? 0;
   const chasing = second.battingTeam;
   const setting = chasing === 0 ? 1 : 0;
@@ -363,6 +420,9 @@ function finishMatch(state: HandCricketState, second: Innings, events: GameEvent
 
   state.finished = true;
   state.phase = 'done';
+  state.ball = null;
+  state.nextBallAt = null;
+  state.celebrateUntil = ctx.now + tellMs + CELEBRATION_MS;
   events.push({ kind: 'result', text: state.summary });
 }
 
@@ -454,7 +514,26 @@ export function onTick(
   input: HandCricketState,
   ctx: Ctx,
 ): { state: HandCricketState; events: GameEvent[] } | null {
-  if (input.finished || input.phase !== 'play' || !input.ball) return null;
+  // The winners have had their ten seconds; let the scorecard through.
+  if (input.finished) {
+    if (input.settled || input.celebrateUntil === null) return null;
+    if (ctx.now < input.celebrateUntil) return null;
+    const state = clone(input);
+    state.settled = true;
+    state.celebrateUntil = null;
+    return { state, events: [] };
+  }
+
+  if (input.phase !== 'play') return null;
+
+  // Between balls: the gap has run out, so put the next one live.
+  if (!input.ball) {
+    if (input.nextBallAt === null || ctx.now < input.nextBallAt) return null;
+    const state = clone(input);
+    openBall(state, ctx);
+    return state.ball ? { state, events: [] } : null;
+  }
+
   if (ctx.now < input.ball.endsAt) return null;
 
   const state = clone(input);
@@ -537,6 +616,8 @@ export function getPlayerView(state: HandCricketState, playerId: string): HandCr
         }
       : null,
     lastBall: state.lastBall,
+    nextBallAt: state.nextBallAt,
+    celebrateUntil: state.celebrateUntil,
     seq: state.seq,
     finished: state.finished,
     winnerTeam: state.winnerTeam,
@@ -552,7 +633,9 @@ export function getSpectatorView(state: HandCricketState): HandCricketView {
 // ---------------------------------------------------------------- result
 
 export function getResult(state: HandCricketState): RoundResult | null {
-  if (!state.finished) return null;
+  // Finished is not the same as over: the room stays on the field while the
+  // winners celebrate, and only a settled match hands back a scorecard.
+  if (!state.finished || !state.settled) return null;
 
   const everyone = [...state.teams[0], ...state.teams[1]];
   const runsOf = (playerId: string): number =>
@@ -595,6 +678,8 @@ export function onPlayerLeft(input: HandCricketState, playerId: string): HandCri
   if (state.teams[team].length === 0) {
     state.finished = true;
     state.phase = 'done';
+    state.settled = true;
+    state.celebrateUntil = null;
     state.winnerTeam = team === 0 ? 1 : 0;
     state.summary = `Team ${(team === 0 ? 1 : 0) + 1} win — the other side walked off.`;
     state.ball = null;
@@ -638,6 +723,8 @@ export function onPlayerLeft(input: HandCricketState, playerId: string): HandCri
   // A ball waiting on someone who has gone can never close on its own.
   if (state.ball && (state.ball.batterId === playerId || state.ball.bowlerId === playerId)) {
     state.ball = null;
+    // Something has to put a ball back up, and only the clock can.
+    state.nextBallAt = 0;
   }
   return state;
 }

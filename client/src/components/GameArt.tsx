@@ -50,3 +50,32 @@ export function SnakesArt() {
     </svg>
   );
 }
+
+export function HandCricketArt() {
+  return (
+    <svg viewBox="0 0 120 100" className="art-svg" aria-hidden="true">
+      {/* the pitch, going away from you */}
+      <path d="M30 92 L44 46 L76 46 L90 92 Z" fill="#E9C784" stroke="var(--line)" strokeWidth="3" />
+
+      {/* stumps at the far end */}
+      <g stroke="var(--line)" strokeWidth="3" strokeLinecap="round">
+        <path d="M54 46v-16M60 46v-17M66 46v-16" />
+      </g>
+      <rect x="51" y="27" width="18" height="4" rx="2" fill="var(--sun)" stroke="var(--line)" strokeWidth="2.4" />
+
+      {/* the two numbers thrown at once, which is the whole game */}
+      <g>
+        <rect x="6" y="40" width="34" height="40" rx="9" fill="var(--sky)" stroke="var(--line)" strokeWidth="3.4" transform="rotate(-8 23 60)" />
+        <text x="23" y="61" transform="rotate(-8 23 60)" textAnchor="middle" dominantBaseline="middle" fill="var(--line)" style={{ font: '400 26px var(--fd)' }}>4</text>
+      </g>
+      <g>
+        <rect x="80" y="40" width="34" height="40" rx="9" fill="var(--pink)" stroke="var(--line)" strokeWidth="3.4" transform="rotate(8 97 60)" />
+        <text x="97" y="61" transform="rotate(8 97 60)" textAnchor="middle" dominantBaseline="middle" fill="var(--line)" style={{ font: '400 26px var(--fd)' }}>6</text>
+      </g>
+
+      {/* the ball on its way */}
+      <circle cx="60" cy="70" r="7" fill="var(--red)" stroke="var(--line)" strokeWidth="3" />
+      <path d="M55.5 70a6 6 0 0 1 5-5" fill="none" stroke="var(--paper)" strokeWidth="1.8" />
+    </svg>
+  );
+}
