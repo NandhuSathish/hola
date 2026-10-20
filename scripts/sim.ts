@@ -204,9 +204,9 @@ function playGame(bots: Bot[], settings: LastCardSettings, seed: number, loud: b
     console.log('\n  ── result ' + '─'.repeat(44));
     if (result) {
       console.log(`  ${name(result.winnerId)} wins with ${result.scores.find((s) => s.playerId === result.winnerId)?.points} points\n`);
-      for (const row of [...result.scores].sort((a, b) => a.cardsLeft - b.cardsLeft)) {
+      for (const row of [...result.scores].sort((a, b) => a.score - b.score)) {
         console.log(
-          `  ${pad(name(row.playerId))} ${String(row.cardsLeft).padStart(2)} cards left   ${String(row.points).padStart(3)} pts`,
+          `  ${pad(name(row.playerId))} ${String(row.score).padStart(2)} cards left   ${String(row.points).padStart(3)} pts`,
         );
       }
     } else {

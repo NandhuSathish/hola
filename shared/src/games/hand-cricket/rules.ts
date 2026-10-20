@@ -116,8 +116,15 @@ export function splitTeams(playerIds: string[]): [string[], string[]] {
   return [a, b];
 }
 
-/** All out after this many. A lone batter has nobody to cross with. */
-export const wicketsAvailable = (teamSize: number): number => Math.max(1, teamSize - 1);
+/**
+ * All out after this many: one wicket per batter, as the mock has it.
+ *
+ * Real cricket stops a side one short, because the last batter has nobody to
+ * cross with. That is the wrong trade here — it means a side of two is all
+ * out on the first ball anyone matches, and a four-player match is over
+ * before it starts. Everybody gets an innings instead.
+ */
+export const wicketsAvailable = (teamSize: number): number => Math.max(1, teamSize);
 
 export function setup(
   players: PlayerRef[],
@@ -290,6 +297,11 @@ function resolveBall(
       innings.batters[next]!.yetToBat = false;
       innings.striker = next;
       newBatterId = innings.batters[next]!.playerId;
+    } else if (innings.nonStriker !== null) {
+      // Nobody left on the bench, but the other end is still occupied: that
+      // player carries on alone until they are out too.
+      innings.striker = innings.nonStriker;
+      innings.nonStriker = null;
     }
   } else {
     innings.runs += bat;
@@ -652,10 +664,11 @@ export function getResult(state: HandCricketState): RoundResult | null {
 
   return {
     winnerId: winners[0] ?? '',
+    scoreLabel: 'Runs',
+    higherIsBetter: true,
     scores: everyone.map((playerId) => ({
       playerId,
-      // The results table calls this column "remaining"; here it is runs.
-      cardsLeft: runsOf(playerId),
+      score: runsOf(playerId),
       points: winners.includes(playerId) ? points : 0,
     })),
   };

@@ -112,10 +112,10 @@ describe('teams', () => {
     ]);
   });
 
-  it('gives a lone batter one wicket and a real side one fewer than its size', () => {
+  it('gives every batter a wicket of their own', () => {
     expect(wicketsAvailable(1)).toBe(1);
-    expect(wicketsAvailable(2)).toBe(1);
-    expect(wicketsAvailable(4)).toBe(3);
+    expect(wicketsAvailable(2)).toBe(2);
+    expect(wicketsAvailable(4)).toBe(4);
   });
 
   it('seats everyone in the room', () => {
@@ -417,10 +417,27 @@ describe('the innings and the chase', () => {
 
   it('ends when the side is all out', () => {
     let state = playing(4, 0, { overs: 6 });
-    // two a side, so one wicket is all out
+    // two a side, so it takes two wickets
     state = bowl(state, 3, 3);
+    expect(state.innings).toHaveLength(1);
+    state = bowl(state, 4, 1); // the survivor carries on
+    state = bowl(state, 2, 2);
     expect(state.innings).toHaveLength(2);
-    expect(state.target).toBe(1);
+    expect(state.target).toBe(5);
+  });
+
+  it('leaves the last batter in alone when nobody is left to walk in', () => {
+    let state = playing(4, 0, { overs: 6 });
+    const opener = state.innings[0]!.batters[state.innings[0]!.striker]!.playerId;
+    state = bowl(state, 3, 3);
+
+    const innings = state.innings[0]!;
+    expect(innings.wickets).toBe(1);
+    // the one at the other end takes strike, and there is no other end now
+    expect(innings.nonStriker).toBeNull();
+    expect(innings.batters[innings.striker]!.playerId).not.toBe(opener);
+    expect(innings.batters[innings.striker]!.out).toBe(false);
+    expect(state.lastBall?.newBatterId).toBeNull();
   });
 
   it('stops the chase the moment the target is passed', () => {
@@ -568,6 +585,17 @@ describe('the result', () => {
     expect(result.scores).toHaveLength(4);
   });
 
+  it('says the column is runs, and that more of them is better', () => {
+    let state = playing(4, 0, { overs: 1 });
+    for (let i = 0; i < 6; i++) state = bowl(state, 6, 1);
+    for (let i = 0; i < 6; i++) state = bowl(state, 0, 1);
+    const result = handCricket.getResult(settle(state))!;
+    // The results table is shared with games where a small number is the
+    // good one, so it has to be told which way this one reads.
+    expect(result.scoreLabel).toBe('Runs');
+    expect(result.higherIsBetter).toBe(true);
+  });
+
   it('pays nobody on a tie', () => {
     let state = playing(4, 0, { overs: 1 });
     for (let i = 0; i < 6; i++) state = bowl(state, 2, 4);
@@ -581,7 +609,7 @@ describe('the result', () => {
     for (let i = 0; i < 6; i++) state = bowl(state, 2, 4);
     for (let i = 0; i < 6; i++) state = bowl(state, 0, 1);
     const result = handCricket.getResult(settle(state))!;
-    const total = result.scores.reduce((sum, s) => sum + s.cardsLeft, 0);
+    const total = result.scores.reduce((sum, s) => sum + s.score, 0);
     expect(total).toBe(12);
   });
 });

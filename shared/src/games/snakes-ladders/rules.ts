@@ -753,9 +753,11 @@ export function getResult(state: SnakesState): RoundResult | null {
 
   return {
     winnerId,
+    scoreLabel: 'Tiles from home',
+    higherIsBetter: false,
     scores: state.seats.map((s) => ({
       playerId: s.id,
-      cardsLeft: LAST_TILE - s.pos,
+      score: LAST_TILE - s.pos,
       points: s.id === winnerId ? LAST_TILE : s.pos,
     })),
   };

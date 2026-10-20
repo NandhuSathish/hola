@@ -7,7 +7,14 @@ export type GameEvent = { kind: string; text: string; playerId?: string };
 
 export type RoundResult = {
   winnerId: string;
-  scores: { playerId: string; cardsLeft: number; points: number }[];
+  /**
+   * What each player's number means, and which way it reads. The results
+   * table is shared, so it cannot know that cards left is a thing to have
+   * few of while runs are a thing to have many of — the game has to say.
+   */
+  scoreLabel: string;
+  higherIsBetter: boolean;
+  scores: { playerId: string; score: number; points: number }[];
 };
 
 /**

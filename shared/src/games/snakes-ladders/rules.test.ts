@@ -303,8 +303,8 @@ describe('finishing', () => {
     expect(result?.scores.find((s) => s.playerId === 'p0')?.points).toBe(100);
     expect(result?.scores.find((s) => s.playerId === 'p1')?.points).toBe(40);
     expect(result?.scores.find((s) => s.playerId === 'p2')?.points).toBe(12);
-    // cardsLeft doubles as "tiles from home" on the results screen
-    expect(result?.scores.find((s) => s.playerId === 'p1')?.cardsLeft).toBe(60);
+    // the score column is "tiles from home" here, so lower is better
+    expect(result?.scores.find((s) => s.playerId === 'p1')?.score).toBe(60);
   });
 
   it('has no result while the game runs', () => {

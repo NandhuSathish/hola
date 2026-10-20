@@ -27,7 +27,9 @@ export function Results({ room }: Props) {
   const totals = payload?.totals ?? view.totals;
   // Fewest cards left is the better finish; the winner is always first.
   const ranked = payload
-    ? [...payload.result.scores].sort((a, b) => a.cardsLeft - b.cardsLeft)
+    ? [...payload.result.scores].sort((a, b) =>
+        payload.result.higherIsBetter ? b.score - a.score : a.score - b.score,
+      )
     : [];
   const winnerPoints =
     payload?.result.scores.find((s) => s.playerId === payload.result.winnerId)?.points ?? 0;
@@ -73,7 +75,7 @@ export function Results({ room }: Props) {
                 <thead>
                   <tr>
                     <th>Player</th>
-                    <th className="num">Remaining</th>
+                    <th className="num">{payload.result.scoreLabel}</th>
                     <th className="num">This round</th>
                     <th className="num">Total</th>
                   </tr>
@@ -90,7 +92,7 @@ export function Results({ room }: Props) {
                           {row.playerId === room.me && <em> (you)</em>}
                         </span>
                       </td>
-                      <td className="num">{row.cardsLeft}</td>
+                      <td className="num">{row.score}</td>
                       <td className="num">{row.points}</td>
                       <td className="num strong">{totals[row.playerId] ?? 0}</td>
                     </tr>

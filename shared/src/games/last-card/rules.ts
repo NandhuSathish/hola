@@ -528,9 +528,11 @@ export function getResult(state: LastCardState): RoundResult | null {
 
   return {
     winnerId,
+    scoreLabel: 'Cards left',
+    higherIsBetter: false,
     scores: state.seats.map((s) => ({
       playerId: s.id,
-      cardsLeft: s.hand.length,
+      score: s.hand.length,
       points: s.id === winnerId ? pot : 0,
     })),
   };

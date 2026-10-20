@@ -9,6 +9,39 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 5 — one wicket per batter
+
+Real cricket stops a side one short, because the last batter has nobody to
+cross with. That is the wrong trade for a party game: a side of two was all
+out on the first ball anyone matched, so a four-player match finished before
+it had started. Everyone gets an innings now, as the mock has it.
+
+Which made a path that had never run start running: with every batter able to
+go, a wicket can fall with nobody left on the bench. The player at the other
+end carries on alone — takes strike, and there is no other end any more —
+until they are out too.
+
+### Phase 5 — done when: two teams, several tabs
+
+Played through four tabs, two a side, which is what phase 5's own done-when
+asks for and what every earlier test of it skipped. Strike crossing on odd
+runs, the bowler changing at the end of an over, the keeper and fielders on
+the ground, the innings change, the chase and the celebration all hold up
+with a real team rather than one player a side.
+
+#### Fixed on the way
+
+- **The results podium ranked Hand Cricket backwards.** `RoundResult` carried
+  a column called `cardsLeft`, and the shared results screen sorted it
+  ascending — right for cards in your hand and for tiles from home, exactly
+  wrong for runs. The winner's name and the top of the podium disagreed.
+
+  The field is `score` now, and the result says what it means and which way
+  it reads: `scoreLabel` and `higherIsBetter`. Last Card is "Cards left",
+  Snakes & Ladders "Tiles from home", Hand Cricket "Runs" with higher
+  better. The shared screen cannot know this on its own, so the game has to
+  say — which is the same reason the core never imports a game.
+
 ### Phase 5h — three buttons, not one pill
 
 The bar's right-hand side was a single cream pill with the game, the code

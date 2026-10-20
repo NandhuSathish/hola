@@ -119,7 +119,7 @@ holla/
 ### Phase 5 — Hand Cricket
 - Third game, from `design/hand-cricket-mock.html`.
 - **Simultaneous, not turn-based:** the striker and the bowler commit a number and it is revealed together. Per-player views hide the opponent's choice; `onTick` closes the window.
-- **Two teams.** The room splits into two sides, alternating down the seat order. A toss, then two innings, the second chasing a target. The bowler changes every over; the strike crosses on odd runs and at the end of one. All out at `max(1, teamSize - 1)` wickets. No fan role — with teams everyone is already batting or bowling.
+- **Two teams.** The room splits into two sides, alternating down the seat order. A toss, then two innings, the second chasing a target. The bowler changes every over; the strike crosses on odd runs and at the end of one. All out at one wicket per batter, as the mock has it, so everyone gets an innings. No fan role — with teams everyone is already batting or bowling.
 - **Done when:** two teams can play a match through to a result in several tabs.
 
 ### Phase 6 — Party polish

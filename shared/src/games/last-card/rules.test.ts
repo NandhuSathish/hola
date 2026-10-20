@@ -585,7 +585,7 @@ describe('ending a round', () => {
     expect(result?.scores.find((s) => s.playerId === 'p0')?.points).toBe(79);
     expect(result?.scores.find((s) => s.playerId === 'p1')?.points).toBe(0);
     expect(result?.scores.find((s) => s.playerId === 'p2')?.points).toBe(0);
-    expect(result?.scores.find((s) => s.playerId === 'p1')?.cardsLeft).toBe(2);
+    expect(result?.scores.find((s) => s.playerId === 'p1')?.score).toBe(2);
   });
 
   it('has no result while play continues', () => {
