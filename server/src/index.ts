@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import express from 'express';
@@ -23,6 +24,16 @@ const isProduction = process.env['NODE_ENV'] === 'production';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(here, '../../client/dist');
 
+/*
+ * Whether to serve the built client, decided by whether there is one rather
+ * than by NODE_ENV. Setting NODE_ENV=production on a host makes `npm install`
+ * skip devDependencies — which here are tsc and vite, the things that do the
+ * build — so a deploy that has to set it to be served at all is a deploy that
+ * cannot build. In dev there is no `client/dist` and Vite serves the client,
+ * so this is false exactly when it should be.
+ */
+const serveClient = existsSync(path.join(clientDist, 'index.html'));
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -41,7 +52,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, shared: SHARED_VERSION, uptime: Math.round(process.uptime()) });
 });
 
-if (isProduction) {
+if (serveClient) {
   app.use(express.static(clientDist));
   // Express 5 dropped the bare '*' path. path-to-regexp v8 spells a catch-all
   // as a named wildcard, so deep links like /r/KPXJ reach the SPA. '/' is
@@ -385,6 +396,8 @@ setInterval(() => {
 
 httpServer.listen(PORT, () => {
   console.log(
-    `[holla] server on http://localhost:${PORT} (${isProduction ? 'production' : 'development'})`,
+    `[holla] server on http://localhost:${PORT}` +
+      ` (${isProduction ? 'production' : 'development'},` +
+      ` ${serveClient ? 'serving client/dist' : 'api only'})`,
   );
 });

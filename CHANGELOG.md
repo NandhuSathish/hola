@@ -9,6 +9,31 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 7 — ready to deploy
+
+`render.yaml` as a Blueprint, so connecting the repo is the whole setup, and
+the production path run locally end to end rather than assumed: health check,
+`/`, a deep link, a sound file, a socket round trip over one origin with no
+Vite proxy in the middle, and a hard reload of `/r/CODE/games` reclaiming its
+seat.
+
+**Serving the client no longer depends on `NODE_ENV`.** It was gated on
+`NODE_ENV === 'production'`, which on a host is a trap with no good way out:
+set it and `npm install` skips devDependencies — tsc and vite, the things
+that do the build — so the deploy cannot build; leave it and the server
+answers 404 for every page. It now serves `client/dist` when there is a
+`client/dist` to serve. In dev there is none and Vite has the client, so the
+behaviour is unchanged. `NODE_ENV=production` is set on the start command,
+where it only affects the running server.
+
+Also pinned `.node-version` to 24.18.0 — Render reads that file, not
+`.nvmrc` — and gave `engines.node` the upper bound Render asks for, since an
+unbounded range resolves to whatever is newest.
+
+Audited every relative import against the real filename on disk. Windows does
+not care about case and Linux does, so a mis-cased import builds here and
+fails there; this one already cost a rename in phase 5. All clean.
+
 ### Phase 6 — fitting on a phone
 
 Playing each game through at 375×812 rather than reading the CSS, which

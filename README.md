@@ -23,14 +23,20 @@ To try it on your phone, use the deployed site or a tunnel.
 
 ## Deploy (Render, free)
 
-- New → Web Service → connect this repo
-- Build command: `npm install && npm run build`
-- Start command: `npm start`
-- Instance type: Free
-- Environment: nothing required for v1
+`render.yaml` in the repo root is a Blueprint, so there is nothing to type in:
 
-The free service sleeps after 15 minutes without traffic. Open the link a minute
-before game night.
+- New → Blueprint → connect this repo → Apply
+
+It deploys `main`, on the free instance, with no environment variables. Change
+the `branch` in `render.yaml` if you would rather ship from `dev`.
+
+Two things about the free tier worth knowing before a game night:
+
+- It sleeps after 15 minutes without traffic and takes about a minute to wake.
+  The first friend to tap a cold link waits that minute. Open it yourself first.
+- Waking is a restart, and rooms live in memory, so a sleep ends every game in
+  progress. That is the trade v1 makes (CLAUDE.md rule 7) — it only bites if
+  the room sits idle for a quarter of an hour, which a game night will not.
 
 The `LIVEKIT_*` values in `.env.example` are for v2 and are not read by anything
 in v1.

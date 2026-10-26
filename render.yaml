@@ -1,0 +1,28 @@
+# One free web service: build the client, serve it from the Node server.
+#
+# Render picks this up when you connect the repo as a Blueprint, so there is
+# nothing to fill in by hand. Everything here matches what `npm run dev` does
+# locally, which is the point — the server has always served the built client
+# itself, so production is the same program with a dist folder beside it.
+#
+# Deliberately absent:
+#
+# - A database. Rooms live in memory (CLAUDE.md rule 7) and a restart ends
+#   them, which is the trade v1 makes.
+# - LIVEKIT_*. Voice is v2; nothing in v1 reads those.
+# - NODE_ENV in envVars. It would apply to the build too, and `npm install`
+#   skips devDependencies when it is set to production — which here are tsc
+#   and vite, so the build would have nothing to build with. It is set on the
+#   start command instead, where it belongs.
+
+services:
+  - type: web
+    name: holla
+    runtime: node
+    plan: free
+    # The release branch. Change this to dev if you would rather every push
+    # went straight out.
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: NODE_ENV=production npm start
+    healthCheckPath: /api/health
