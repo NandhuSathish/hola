@@ -3,7 +3,7 @@
 .hc-screen {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 12px 16px 28px;
+  padding: 12px 16px var(--bar-clear);
 }
 
 /* ---------- scorebar ---------- */
@@ -357,8 +357,16 @@
 /* ---------- phones ---------- */
 
 @media (max-width: 900px) {
-  .hc-screen { padding: 10px 14px 32px; }
+  .hc-screen { padding: 10px 14px var(--bar-clear); }
   .hc-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+
+  /*
+   * Stacked, the three columns put the scorecard between the ground and the
+   * picker — so the one thing you have to hit before the clock runs out sat
+   * below the fold. The picker comes first on a phone; the scorecard and the
+   * over are things you read between balls, not during one.
+   */
+  .hc-centre { order: -1; }
   .hc-score { font-size: 32px; }
   .hc-scene { height: clamp(200px, 38dvh, 300px); }
   .hc-nums { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }

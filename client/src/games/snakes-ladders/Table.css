@@ -7,7 +7,7 @@
 .sl-screen {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 12px 16px 28px;
+  padding: 12px 16px var(--bar-clear);
 }
 
 .sl-layout {
@@ -346,7 +346,7 @@
 
 @media (max-width: 900px) {
   .sl-screen {
-    padding: 10px 14px 32px;
+    padding: 10px 14px var(--bar-clear);
   }
 
   .sl-layout {

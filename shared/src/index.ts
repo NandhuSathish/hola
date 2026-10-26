@@ -17,7 +17,11 @@ export {
   EMPTY_ROOM_TTL_MS,
   MAX_PLAYERS,
   NAME_MAX_LENGTH,
+  REACTIONS,
+  REACTION_EVERY_MS,
+  isReaction,
 } from './events.js';
+export type { Reaction } from './events.js';
 
 export {
   ROOM_CODE_ALPHABET,

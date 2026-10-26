@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HandCricketView, Look, Outcome } from '@holla/shared';
 import { useCanvas } from '../../lib/canvas';
+import { play as sound } from '../../lib/sound';
 import { drawScene, sceneDuration, stampAt, type SceneCast } from './stadium';
 
 type Props = {
@@ -61,7 +62,13 @@ export function Scene({
     // Reduced motion has no flight to watch, so the word is the whole telling.
     const stampMs = reduced ? 0 : stampAt(replay.outcome) * 1000;
     const endMs = reduced ? 1100 : (sceneDuration(replay.outcome) + 0.5) * 1000;
-    const atStamp = window.setTimeout(() => setStamped(true), stampMs);
+    const outcome = replay.outcome;
+    const atStamp = window.setTimeout(() => {
+      setStamped(true);
+      // A wicket is bad news for the batter and good for everyone bowling,
+      // but the ground only makes one noise, so it is the batter's.
+      sound(outcome === 'W' ? 'bad' : outcome === 4 || outcome === 6 ? 'good' : 'tap');
+    }, stampMs);
     const atEnd = window.setTimeout(() => doneRef.current(), endMs);
     return () => {
       window.clearTimeout(atStamp);

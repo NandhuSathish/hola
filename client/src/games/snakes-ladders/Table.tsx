@@ -9,6 +9,7 @@ import { LOG_ART } from './icons';
 import { Head } from '../../components/Fighter';
 import { teamColour } from '../../art/fighter';
 import { usePrefersReducedMotion } from '../../lib/motion';
+import { play as sound } from '../../lib/sound';
 import { useTurnCountdown } from '../../lib/useTurnCountdown';
 import './Table.css';
 
@@ -44,7 +45,9 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
 
   const roll = useCallback(() => {
     hold(false);
-    if (view.me.canRoll) send({ type: 'roll' });
+    if (!view.me.canRoll) return;
+    sound('roll');
+    send({ type: 'roll' });
   }, [hold, send, view.me.canRoll]);
 
   // Hold to shake, let go to roll — Space does the same, as in the mock. The
@@ -81,7 +84,11 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
         return;
       }
       const cue = stampFor(step, playerId === me);
-      if (cue) setStamp({ ...cue, at: performance.now() });
+      if (cue) {
+        setStamp({ ...cue, at: performance.now() });
+        // A ladder is good news whoever climbs it; a snake is bad news.
+        sound(step.kind === 'ladder' || step.kind === 'charmed' ? 'good' : 'bad');
+      }
     },
     [me],
   );
@@ -191,6 +198,7 @@ export function SnakesTable({ view, me, players, send, events, eventSeq }: Table
                 .map((seat) => (
                   <li
                     key={seat.playerId}
+                    data-player={seat.playerId}
                     className={[
                       seat.playerId === view.turnPlayerId ? 'now' : '',
                       seat.connected ? '' : 'away',

@@ -1,0 +1,137 @@
+/* The reaction palette and the emoji it throws, from design/holla-mock.html. */
+
+.reactmenu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+/* The palette hangs below the bar, right-aligned so it never runs off the
+   edge of a phone, and over everything so no board sits on top of it. */
+.reactpop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px;
+  border-radius: 999px;
+  animation: reactpop-in 0.14s ease-out;
+}
+
+/* Opacity only: the narrow layout below needs the transform for centring. */
+@keyframes reactpop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.react {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.1s;
+  padding: 0;
+}
+
+.react:hover:not(:disabled),
+.react:focus-visible:not(:disabled) {
+  transform: scale(1.2) rotate(-8deg);
+}
+
+.react:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.react:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---------- the emoji in flight ---------- */
+
+.reaction-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.floaty {
+  position: fixed;
+  font-size: 38px;
+  line-height: 1;
+  pointer-events: none;
+  animation: floatup 1.7s ease-out forwards;
+}
+
+@keyframes floatup {
+  from {
+    transform: translate(-50%, 0) scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: translate(calc(-50% + var(--dx)), -220px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* Still says who reacted and with what — it just does not fly across. */
+@media (prefers-reduced-motion: reduce) {
+  .floaty {
+    animation: floaty-calm 0.7s ease-out forwards;
+  }
+
+  @keyframes floaty-calm {
+    from { transform: translate(-50%, 0) scale(1); opacity: 1; }
+    to { transform: translate(-50%, -30px) scale(1); opacity: 0; }
+  }
+
+  .react:hover:not(:disabled) { transform: none; }
+  .reactpop { animation: none; }
+}
+
+@media (max-width: 560px) {
+  /*
+   * Hung off the button, the palette runs past the left edge of a phone —
+   * the button is only two thirds of the way across the bar. So here it
+   * stops following the button and centres on the screen instead.
+   */
+  .reactpop {
+    position: fixed;
+    top: var(--nav-h);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    gap: 2px;
+    padding: 5px;
+  }
+
+  .react {
+    width: 40px;
+    height: 40px;
+    font-size: 21px;
+  }
+}
+
+.react-sep {
+  width: 2px;
+  height: 26px;
+  background: var(--paper-2);
+  margin: 0 2px;
+  flex: 0 0 auto;
+}
+
+.react.mute {
+  font-size: 20px;
+}
+
+.react.mute.off {
+  opacity: 0.55;
+}

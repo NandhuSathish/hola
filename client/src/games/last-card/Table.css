@@ -1,7 +1,7 @@
 .table-screen {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 12px 16px 28px;
+  padding: 12px 16px var(--bar-clear);
 }
 
 /* ---------- top bar ---------- */
@@ -81,7 +81,13 @@
 /* ---------- the table itself ---------- */
 .arena {
   position: relative;
-  height: clamp(330px, calc(100vh - 430px), 520px);
+  /*
+   * The flexible part of the table: everything else here is a fixed height,
+   * so the rug takes what is left. The subtraction is the nav, the banner,
+   * the log, the hand and the screen's own padding — and the floor is low
+   * enough that a laptop still fits the whole table without scrolling.
+   */
+  height: clamp(280px, calc(100dvh - 440px), 520px);
   max-width: 1040px;
   margin: 10px auto 0;
 }
@@ -568,7 +574,9 @@
     padding: 10px 12px 18px;
     display: flex;
     flex-direction: column;
-    min-height: 100dvh;
+    /* The bar is above us and sticky, so a full viewport here is a whole nav
+       too tall and the hand ends up below the fold. */
+    min-height: calc(100dvh - var(--nav-h));
   }
   .banner { font-size: 18px; padding: 10px 14px; }
   .table-meta { font-size: 12.5px; }

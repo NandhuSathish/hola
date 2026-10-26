@@ -39,6 +39,18 @@ export function useRoute(): Route {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  /*
+   * Every screen here starts at the top — a board, a lobby, a list of games —
+   * so carrying the last one's scroll over means landing halfway down the
+   * Snakes & Ladders board with the dice off the bottom of the phone. The
+   * browser would also restore a position on reload, hence the manual flag.
+   */
+  const where = route.screen + ('code' in route ? `:${route.code}` : '');
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+  }, [where]);
+
   return route;
 }
 

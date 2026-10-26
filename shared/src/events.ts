@@ -28,6 +28,11 @@ export interface ClientToServerEvents {
   'room:leave': (ack: (res: Ack) => void) => void;
   /** Restyle your fighter. Lobby only — mid-game it would be a disguise. */
   'room:look': (input: { look: Look }, ack: (res: Ack) => void) => void;
+  /**
+   * Throw an emoji. No acknowledgement: a reaction that failed is not worth
+   * telling anyone about, and the round trip would make it feel sticky.
+   */
+  'room:react': (input: { emoji: string }) => void;
   /** Host only, lobby only, and the game must be a 'ready' one. */
   'room:setGame': (input: { gameId: string }, ack: (res: Ack) => void) => void;
   /** Host only, lobby only. The patch is validated by the game's own spec. */
@@ -52,6 +57,8 @@ export interface ServerToClientEvents {
   'game:view': (view: unknown) => void;
   /** Feeds the log and toasts. */
   'game:events': (events: GameEvent[]) => void;
+  /** Somebody reacted. `id` is unique per throw, so repeats still animate. */
+  'room:reaction': (payload: { playerId: string; emoji: Reaction; id: number }) => void;
   /** Round over: who won, what everyone was holding, and the running totals. */
   'game:result': (payload: { result: RoundResult; totals: Record<string, number> }) => void;
 }
@@ -66,6 +73,20 @@ export interface SocketData {
   playerId?: string;
   code?: string;
 }
+
+/**
+ * What you can throw at the room. A closed list, because an open one is a
+ * text field by another name and this is a game for one friend group, not a
+ * chat.
+ */
+export const REACTIONS = ['😂', '🔥', '😱', '👏', '🐍', '🏏'] as const;
+export type Reaction = (typeof REACTIONS)[number];
+
+export const isReaction = (value: unknown): value is Reaction =>
+  (REACTIONS as readonly unknown[]).includes(value);
+
+/** Nobody needs to send more than this, and a bot would send far more. */
+export const REACTION_EVERY_MS = 600;
 
 export const MAX_PLAYERS = 15;
 export const NAME_MAX_LENGTH = 14;

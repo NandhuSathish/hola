@@ -37,6 +37,12 @@
   /* height of the nav bar, so screens can claim the rest of the viewport */
   --nav-h: 74px;
 
+  /*
+   * The bottom padding every full screen uses, so one number covers the home
+   * indicator on a phone and nothing has to repeat `env()`.
+   */
+  --bar-clear: calc(28px + env(safe-area-inset-bottom));
+
   --fd: 'Lilita One', system-ui, sans-serif; /* display: headings, cards, buttons */
   --fb: 'Nunito', system-ui, sans-serif; /* body, weights 700-900 */
 }

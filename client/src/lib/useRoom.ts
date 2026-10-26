@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Ack, AckWith, GameEvent, LastCardView, RoomView, Look, RoundResult, Seat } from '@holla/shared';
+import type {
+  Ack,
+  AckWith,
+  GameEvent,
+  LastCardView,
+  Look,
+  Reaction,
+  RoomView,
+  RoundResult,
+  Seat,
+} from '@holla/shared';
 import { socket, type ConnectionState } from './socket';
 import { clearSeat, loadSeat, saveSeat, type Profile } from './session';
 import { gamesPath, navigate, roomPath } from './route';
@@ -17,6 +27,11 @@ type State = {
   /** Counts batches, so repeating the same event still reads as new. */
   logSeq: number;
   result: { result: RoundResult; totals: Record<string, number> } | null;
+  /**
+   * Reactions in flight. They are thrown away as each one finishes rather
+   * than accumulating — nobody scrolls back through emoji.
+   */
+  reactions: { playerId: string; emoji: Reaction; id: number }[];
 };
 
 export function useRoom(codeFromUrl: string | null) {
@@ -28,6 +43,7 @@ export function useRoom(codeFromUrl: string | null) {
     busy: false,
     game: null,
     log: [],
+    reactions: [],
     logSeq: 0,
     result: null,
   });
@@ -77,6 +93,11 @@ export function useRoom(codeFromUrl: string | null) {
       }));
     };
     const onView = (view: unknown) => patch({ game: view as LastCardView });
+    const onReaction = (payload: { playerId: string; emoji: Reaction; id: number }) =>
+      // Capped: a room of fifteen all leaning on a button should not be able
+      // to pile up more than the screen can show at once.
+      setState((prev) => ({ ...prev, reactions: [...prev.reactions, payload].slice(-24) }));
+
     const onEvents = (events: GameEvent[]) =>
       setState((prev) => ({
         ...prev,
@@ -98,6 +119,7 @@ export function useRoom(codeFromUrl: string | null) {
     socket.on('room:closed', onClosed);
     socket.on('game:view', onView);
     socket.on('game:events', onEvents);
+    socket.on('room:reaction', onReaction);
     socket.on('game:result', onResult);
 
     if (socket.connected) rejoin();
@@ -109,6 +131,7 @@ export function useRoom(codeFromUrl: string | null) {
       socket.off('room:closed', onClosed);
       socket.off('game:view', onView);
       socket.off('game:events', onEvents);
+      socket.off('room:reaction', onReaction);
       socket.off('game:result', onResult);
     };
   }, [patch, rejoin]);
@@ -166,6 +189,15 @@ export function useRoom(codeFromUrl: string | null) {
     },
     [patch],
   );
+
+  const react = useCallback((emoji: Reaction) => {
+    socket.emit('room:react', { emoji });
+  }, []);
+
+  /** Dropped by the floating layer once a reaction has finished its flight. */
+  const clearReaction = useCallback((id: number) => {
+    setState((prev) => ({ ...prev, reactions: prev.reactions.filter((r) => r.id !== id) }));
+  }, []);
 
   const setGame = useCallback(
     (gameId: string) => {
@@ -229,6 +261,8 @@ export function useRoom(codeFromUrl: string | null) {
     joinRoom,
     setGame,
     setLook,
+    react,
+    clearReaction,
     updateSettings,
     startGame,
     sendAction,

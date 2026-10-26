@@ -1,7 +1,8 @@
-import { getGameInfo } from '@holla/shared';
+import { getGameInfo, type Reaction } from '@holla/shared';
 import { navigate } from '../lib/route';
 import { useCopy } from '../lib/useCopy';
 import { CheckIcon, CopyIcon, LeaveIcon } from './icons';
+import { ReactionMenu } from './Reactions';
 import './NavBar.css';
 
 type Props = {
@@ -17,6 +18,11 @@ type Props = {
    * the same page.
    */
   onLeave?: () => void;
+  /**
+   * Given only while in a room. The palette hangs off the bar because it is
+   * the one strip of the screen no game draws in.
+   */
+  onReact?: (emoji: Reaction) => void;
 };
 
 /** A colour per game, so the chip reads before the words do. */
@@ -32,7 +38,7 @@ const GAME_COLOUR: Record<string, string> = {
  * Carries the three things that are true everywhere: where you are, what you
  * are playing, and whether the server is still there.
  */
-export function NavBar({ code, gameId, connection = 'connected', onLeave }: Props) {
+export function NavBar({ code, gameId, connection = 'connected', onLeave, onReact }: Props) {
   const { copied, copy } = useCopy();
   const game = gameId ? getGameInfo(gameId) : undefined;
 
@@ -68,6 +74,8 @@ export function NavBar({ code, gameId, connection = 'connected', onLeave }: Prop
             {connection === 'connecting' ? 'Connecting…' : 'Reconnecting…'}
           </span>
         )}
+
+        {onReact && <ReactionMenu onReact={onReact} />}
 
         {code && (
           <button

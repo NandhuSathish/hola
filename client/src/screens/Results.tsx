@@ -1,6 +1,8 @@
 import { DEFAULT_LOOK } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
+import { useEffect } from 'react';
 import { Confetti } from '../components/Flourish';
+import { play as sound } from '../lib/sound';
 import { Head } from '../components/Fighter';
 import './Results.css';
 
@@ -23,6 +25,12 @@ export function Results({ room }: Props) {
   const seatOf = (id: string) => Math.max(0, view.players.findIndex((p) => p.id === id));
   const isHost = room.me === view.hostId;
   const hostName = nameOf(view.hostId);
+
+  // Once per arrival at the screen, not once per render.
+  const settled = Boolean(payload);
+  useEffect(() => {
+    if (settled) sound('win');
+  }, [settled]);
 
   const totals = payload?.totals ?? view.totals;
   // Fewest cards left is the better finish; the winner is always first.

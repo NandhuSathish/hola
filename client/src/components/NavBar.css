@@ -73,6 +73,7 @@
 .nav-game,
 .nav-code,
 .nav-leave,
+.nav-react,
 .nav-state {
   display: inline-flex;
   align-items: center;
@@ -92,9 +93,37 @@
 }
 
 .nav-code,
-.nav-leave {
+.nav-leave,
+.nav-react {
   cursor: pointer;
   justify-content: center;
+}
+
+/*
+ * Reactions.
+ *
+ * The mock pins these to a bar across the bottom of the screen, but that
+ * strip is where our games put the things you actually press — the Last Card
+ * hand, the Hand Cricket picker — so here it is one button that opens a
+ * palette, and the games keep their room.
+ */
+.nav-react {
+  width: 44px;
+  padding: 0;
+  background: var(--sky);
+  font-size: 21px;
+  line-height: 1;
+}
+
+.nav-react:hover,
+.nav-react:focus-visible {
+  background: var(--mint);
+}
+
+.nav-react.open {
+  background: var(--mint);
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
 }
 
 /* The game you are in is a label, not a button, so it sits flatter. */
@@ -142,7 +171,8 @@
 }
 
 .nav-code:active,
-.nav-leave:active {
+.nav-leave:active,
+.nav-react:active {
   transform: translate(3px, 3px);
   box-shadow: 1px 1px 0 var(--line);
 }
@@ -180,6 +210,10 @@
   .nav-code,
   .nav-leave {
     padding: 0 10px;
+  }
+
+  .nav-react {
+    width: 40px;
   }
 
   .nav-game {

@@ -9,6 +9,75 @@ deploy are done.
 
 ## Unreleased — working towards v1
 
+### Phase 6 — fitting on a phone
+
+Playing each game through at 375×812 rather than reading the CSS, which
+found four things that made the games awkward or unplayable on the device
+most of a game night happens on.
+
+**The reaction bar moved into the nav.** The mock pins the emoji across the
+bottom of the screen as part of its voicebar, and that is where our games put
+the things you actually press — the bar sat squarely on the Last Card hand,
+124px of it. Reserving a strip for it cost the Last Card table more height
+than it had to give. So the palette is a button in the top bar now, opening
+on a tap and closing on a pick, Escape or a tap anywhere else. The top bar is
+the one strip of the screen no game draws in. On a phone the palette centres
+on the viewport rather than hanging off the button, which is two thirds of
+the way across the bar and would push it past the left edge.
+
+`--bar-clear` stays as the bottom padding every screen uses, now the 28px of
+breathing room plus the home indicator rather than clearance for a bar.
+
+**The invite link had no door.** `/r/CODE` only ever tried to reclaim a seat
+from `localStorage`, so the friend who tapped the link in a group chat — the
+only person it is for — got "Looking for your seat…" and nothing else, for
+ever. With no seat saved it is a join form now: name, fighter, take a seat.
+
+**Screens kept the last one's scroll.** Nothing reset it, so picking Snakes &
+Ladders from a list you had scrolled dropped you onto the board 274px down,
+with the dice below the fold. The router scrolls to the top on a route
+change, and because the lobby and the table share a URL, `App` does the same
+on a phase change. `scrollRestoration` is manual, so a reload behaves too.
+
+**Hand Cricket hid the picker.** Stacked on a phone, the three columns put
+the scorecard between the ground and the number picker, which left the one
+thing you have to hit before the clock runs out below the fold. The picker
+comes first on a phone; the scorecard and the over are what you read between
+balls, not during one.
+
+Also: the Last Card table asked for a full `100dvh` below a 74px sticky nav,
+so the hand hung 56px past the bottom of a phone whatever else was fixed.
+
+### Phase 6 — reactions and sounds
+
+**Reactions.** Six emoji from the mock's voicebar — the voice buttons beside
+them there are v2, so for now it is the emoji alone. `room:react` is fire and forget: no acknowledgement, because a
+reaction that failed is not worth telling anyone about and the round trip
+would make it feel sticky. The server drops anything off the list and rate
+limits to one every 600ms per connection, which is generous for a person and
+useless for a script.
+
+Each emoji floats up from whoever threw it, found by looking for
+`[data-player="<id>"]` anywhere on the page. That is how a seat in the lobby,
+a row in a scorecard and a racer in a strip can all be the anchor without any
+of them knowing reactions exist — and with nothing to pin to, it rises from
+the bottom of the screen instead.
+
+**Sounds.** Eight effects from Mixkit, committed under `client/public/sounds`
+so they ship with the build and nothing is fetched from a third party
+mid-game; the README there records each file's source and the licence. Wired
+to the moments that carry news: the roll and what the board does to you, a
+card played or drawn, a number thrown and what came of it, a reaction
+landing, and the end of a round.
+
+- Mute is a toggle on the reaction palette and sticks in `localStorage`.
+- A browser will not make a sound before the page has been touched, so the
+  first press anywhere also warms the cache; a refusal before that is
+  expected rather than a fault, and the next cue works.
+- Several of the sources run two to four seconds, nearly all reverb tail —
+  fine as a sample on a web page, grating twenty times a round. Each cue is
+  cut to the part that carries the news. The win fanfare is left to ring.
+
 ### Phase 5 — one wicket per batter
 
 Real cricket stops a side one short, because the last batter has nobody to

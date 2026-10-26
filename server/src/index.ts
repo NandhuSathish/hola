@@ -11,6 +11,8 @@ import {
   type InterServerEvents,
   type ServerToClientEvents,
   type SocketData,
+  REACTION_EVERY_MS,
+  isReaction,
 } from '@holla/shared';
 import { createRoomStore, toView } from './rooms.js';
 import { createGameRunner } from './gameRunner.js';
@@ -108,6 +110,9 @@ function overCreateLimit(key: object): boolean {
   createCounts.set(key, used);
   return used > CREATE_LIMIT;
 }
+
+/** Unique per throw, so the same emoji twice still animates twice. */
+let reactionId = 0;
 
 io.on('connection', (socket) => {
   socket.on('room:create', (input, ack) => {
@@ -210,6 +215,26 @@ io.on('connection', (socket) => {
     }
     ack({ ok: true });
     broadcast(res.value.code);
+  });
+
+  /*
+   * Reactions are fire and forget: no acknowledgement, and a bad one is
+   * dropped rather than argued about. The rate limit is per connection and
+   * deliberately generous for a person and useless for a script.
+   */
+  let lastReactionAt = 0;
+  socket.on('room:react', (input) => {
+    const playerId = socket.data.playerId;
+    const code = socket.data.code;
+    if (!playerId || !code) return;
+    if (!isReaction(input?.emoji)) return;
+
+    const at = Date.now();
+    if (at - lastReactionAt < REACTION_EVERY_MS) return;
+    lastReactionAt = at;
+
+    reactionId += 1;
+    io.to(code).emit('room:reaction', { playerId, emoji: input.emoji, id: reactionId });
   });
 
   socket.on('room:setGame', (input, ack) => {

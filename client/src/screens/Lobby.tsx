@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { MAX_PLAYERS, getGameInfo } from '@holla/shared';
+import { MAX_PLAYERS, NAME_MAX_LENGTH, getGameInfo } from '@holla/shared';
 import type { useRoom } from '../lib/useRoom';
 import { Head } from '../components/Fighter';
-import { LookPicker } from '../components/LookPicker';
+import { LookPicker, LookRows, LookStage } from '../components/LookPicker';
 import { CheckIcon, CopyIcon, LinkIcon } from '../components/icons';
 import { useCopy } from '../lib/useCopy';
-import { loadProfile, saveProfile } from '../lib/session';
+import { loadProfile, loadSeat, saveProfile } from '../lib/session';
 import { gamesPath, navigate } from '../lib/route';
 import { getGameUI } from '../games';
 import './Lobby.css';
@@ -20,8 +20,11 @@ export function Lobby({ room, code }: Props) {
   const linkCopy = useCopy();
   const view = room.room;
 
+  // No seat saved for this code means this is the friend who was sent the
+  // link, not somebody coming back to a room they are already in — so the
+  // door is a join form rather than a wait.
   if (!view) {
-    return (
+    return loadSeat(code) ? (
       <main className="lobby-screen">
         <section className="sticker panel narrow">
           <h1 className="room-title">Room {code}</h1>
@@ -31,6 +34,8 @@ export function Lobby({ room, code }: Props) {
           </button>
         </section>
       </main>
+    ) : (
+      <JoinCard room={room} code={code} />
     );
   }
 
@@ -99,7 +104,11 @@ export function Lobby({ room, code }: Props) {
 
           <ul className="pgrid">
             {view.players.map((p, seat) => (
-              <li key={p.id} className={`sticker pslot${p.connected ? '' : ' away'}`}>
+              <li
+                key={p.id}
+                className={`sticker pslot${p.connected ? '' : ' away'}`}
+                data-player={p.id}
+              >
                 {p.id === view.hostId && <span className="crown" title="Host">👑</span>}
                 <Head className="pav" look={p.look} seat={seat} size={54} />
                 <span className="pname">
@@ -205,6 +214,75 @@ export function Lobby({ room, code }: Props) {
           {room.error && <p className="form-error" role="alert">{room.error}</p>}
         </aside>
       </div>
+    </main>
+  );
+}
+
+/**
+ * The invite link's front door.
+ *
+ * Someone who taps `/r/CODE` in a group chat has no name, no fighter and no
+ * seat, so sending them to the home page to type a code they already handed
+ * us would be the wrong way round. Same two fields as home, minus the code.
+ */
+function JoinCard({ room, code }: Props) {
+  const [profile, setProfile] = useState(loadProfile);
+  const nameOk = profile.name.trim().length > 0;
+
+  function update(next: Partial<typeof profile>) {
+    const merged = { ...profile, ...next };
+    setProfile(merged);
+    saveProfile(merged);
+  }
+
+  return (
+    <main className="lobby-screen">
+      <section className="sticker panel join-panel">
+        <div className="join-stage">
+          <LookStage look={profile.look} height={220} />
+        </div>
+
+        <form
+          className="join-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (nameOk) room.joinRoom(code, profile);
+          }}
+        >
+          <h1 className="room-title">Join room {code}</h1>
+
+          <label className="field-title" htmlFor="join-name">Your name</label>
+          <input
+            id="join-name"
+            className="input"
+            value={profile.name}
+            maxLength={NAME_MAX_LENGTH}
+            placeholder="What should we call you?"
+            autoFocus
+            onChange={(e) => update({ name: e.target.value })}
+          />
+
+          <span className="field-title">Build your fighter</span>
+          <LookRows look={profile.look} onChange={(look) => update({ look })} />
+
+          <button
+            type="submit"
+            className="btn btn-pink big"
+            disabled={!nameOk || room.busy || room.connection !== 'connected'}
+          >
+            Take a seat
+          </button>
+
+          {room.error && <p className="form-error" role="alert">{room.error}</p>}
+          {room.connection !== 'connected' && (
+            <p className="form-note">
+              {room.connection === 'connecting'
+                ? 'Connecting to the server…'
+                : 'Lost the server. Retrying…'}
+            </p>
+          )}
+        </form>
+      </section>
     </main>
   );
 }

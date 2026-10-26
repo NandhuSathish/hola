@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, Color, GameEvent, LastCardView, PublicPlayer } from '@holla/shared';
 import { DEFAULT_LOOK } from '@holla/shared';
 import { Head } from '../../components/Fighter';
+import { play as sound } from '../../lib/sound';
 import { CardBack, PlayingCard, describeCard } from './Card';
 import { Confetti, FlyingCard, Stamp, Toast, type FlightPlan } from '../../components/Flourish';
 import { useTurnCountdown } from '../../lib/useTurnCountdown';
@@ -86,6 +87,7 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
         id: flightId.current,
       });
     }
+    sound('play');
     send({ type: 'play', cardId: card.id, ...extra });
   }
 
@@ -138,6 +140,7 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
             return (
               <li
                 key={seat.playerId}
+                data-player={seat.playerId}
                 className={['seat', theirTurn ? 'turn' : '', seat.connected ? '' : 'away']
                   .filter(Boolean)
                   .join(' ')}
@@ -191,7 +194,10 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
                 type="button"
                 className="draw-btn"
                 disabled={!myTurn}
-                onClick={() => send({ type: 'draw' })}
+                onClick={() => {
+                  sound('draw');
+                  send({ type: 'draw' });
+                }}
                 aria-label="Draw a card"
               >
                 <CardBack />
@@ -216,6 +222,7 @@ export function LastCardTable({ view, me, players, send, events, eventSeq }: Tab
       <div className="hand-area">
         <div
           className={`me${myTurn ? ' turn' : ''}`}
+          data-player={me}
           style={myTurn ? ({ ['--t']: String(progress) } as React.CSSProperties) : undefined}
         >
           <div className="seat-avatar">

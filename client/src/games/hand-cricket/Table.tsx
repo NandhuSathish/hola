@@ -3,6 +3,7 @@ import type { GameEvent, HandCricketView, Outcome, Pick, PublicPlayer } from '@h
 import { BALLS_PER_OVER, DEFAULT_LOOK, NUMBERS } from '@holla/shared';
 import { Head } from '../../components/Fighter';
 import { usePrefersReducedMotion } from '../../lib/motion';
+import { play as sound } from '../../lib/sound';
 import { Scene } from './Scene';
 import { Toss } from './Toss';
 import { stampFor } from './stadium';
@@ -88,6 +89,7 @@ export function HandCricketTable({ view, me, players, send }: TableProps) {
   const pick = useCallback(
     (value: Pick) => {
       if (!view.ball || !view.me.canPick) return;
+      sound('tap');
       send({ type: 'pick', ballId: view.ball.id, value });
     },
     [send, view.ball, view.me.canPick],
@@ -160,7 +162,7 @@ export function HandCricketTable({ view, me, players, send }: TableProps) {
             <h3>Batting</h3>
             <ul className="hc-card">
               {innings?.batters.map((b, i) => (
-                <li key={b.playerId} className={b.out ? 'out' : ''}>
+                <li key={b.playerId} data-player={b.playerId} className={b.out ? 'out' : ''}>
                   <span className="hc-av">
                     <Head look={lookOf(b.playerId)} seat={teamOf(b.playerId)} size={26} />
                   </span>
