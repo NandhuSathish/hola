@@ -1,0 +1,155 @@
+/* Mystery box reveal and stamps, from design/snakes-ladders-mock.html. */
+
+.sl-ov {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 10, 46, 0.55);
+  border-radius: 24px;
+  z-index: 5;
+  padding: 14px;
+}
+
+.sl-ov-card {
+  padding: 20px;
+  text-align: center;
+  width: min(380px, 100%);
+  animation: sl-popin 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes sl-popin {
+  from {
+    transform: scale(0.6) rotate(-6deg);
+    opacity: 0;
+  }
+}
+
+.sl-ov-who {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: var(--line);
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.sl-ov-ok {
+  width: 100%;
+}
+
+/* ---------- the card ---------- */
+
+.sl-card3d {
+  perspective: 800px;
+  width: 170px;
+  height: 220px;
+  margin: 6px auto 14px;
+}
+
+.sl-card3d-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.sl-card3d.flipped .sl-card3d-inner {
+  transform: rotateY(180deg);
+}
+
+.sl-card-front,
+.sl-card-back {
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 5px 5px 0 var(--line);
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.sl-card-front {
+  background: var(--ink-3);
+  color: var(--sun);
+  font: 400 84px var(--fd);
+  background-image: radial-gradient(rgba(255, 244, 220, 0.18) 1.6px, transparent 2px);
+  background-size: 12px 12px;
+  -webkit-text-stroke: 3px var(--line);
+  paint-order: stroke fill;
+}
+
+.sl-card-back {
+  background: var(--c, var(--sun));
+  color: var(--line);
+  transform: rotateY(180deg);
+}
+
+.sl-card-back svg {
+  width: 78px;
+  height: 78px;
+}
+
+.sl-card-back b {
+  font: 400 22px/1.05 var(--fd);
+}
+
+.sl-card-back small {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-ov-card { animation: none; }
+  .sl-card3d-inner { transition: none; }
+}
+
+/* ---------- stamps ---------- */
+
+.sl-stamp {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.sl-stamp span {
+  font: 400 clamp(40px, 8vw, 86px) / 1 var(--fd);
+  color: var(--c, var(--sun));
+  -webkit-text-stroke: 4px var(--line);
+  paint-order: stroke fill;
+  text-shadow: 7px 7px 0 var(--line);
+  opacity: 0;
+  white-space: nowrap;
+  animation: sl-stamp 1.2s cubic-bezier(0.3, 1.6, 0.5, 1) forwards;
+}
+
+@keyframes sl-stamp {
+  0% { opacity: 0; transform: rotate(-8deg) scale(0.3); }
+  25% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  78% { opacity: 1; transform: rotate(-6deg) scale(1.03); }
+  100% { opacity: 0; transform: rotate(-6deg) scale(1.1); }
+}
+
+/* Reduced motion still needs the word — it just holds still and fades. */
+@media (prefers-reduced-motion: reduce) {
+  .sl-stamp span {
+    animation: sl-stamp-calm 1.2s linear forwards;
+    transform: rotate(-6deg);
+  }
+  @keyframes sl-stamp-calm {
+    0%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}

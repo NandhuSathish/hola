@@ -1,0 +1,160 @@
+export type { Player, PublicPlayer, Room, RoomPhase, RoomView } from './types.js';
+
+export type {
+  Ack,
+  AckWith,
+  ClientToServerEvents,
+  CreateRoomInput,
+  InterServerEvents,
+  JoinRoomInput,
+  RejoinRoomInput,
+  Seat,
+  ServerToClientEvents,
+  SocketData,
+} from './events.js';
+export {
+  DISCONNECT_GRACE_MS,
+  EMPTY_ROOM_TTL_MS,
+  MAX_PLAYERS,
+  NAME_MAX_LENGTH,
+  REACTIONS,
+  REACTION_EVERY_MS,
+  isReaction,
+} from './events.js';
+export type { Reaction } from './events.js';
+
+export {
+  ROOM_CODE_ALPHABET,
+  ROOM_CODE_LENGTH,
+  isValidRoomCode,
+  makeRoomCode,
+  normaliseRoomCode,
+} from './room-code.js';
+
+export { cleanName, isValidName, uniqueName } from './names.js';
+
+export type { Look } from './look.js';
+export {
+  DEFAULT_LOOK,
+  HAIRS,
+  SHORTS,
+  SKINS,
+  STYLES,
+  TEAM_COLOURS,
+  freeLook,
+  sanitiseLook,
+} from './look.js';
+
+export type {
+  GameEvent,
+  GameInfo,
+  GameModule,
+  PlayerRef,
+  RoundResult,
+  SettingsSpec,
+} from './games/types.js';
+export {
+  DEFAULT_GAME_ID,
+  catalogue,
+  getGameInfo,
+  isPickable,
+  isPlayable,
+  modules,
+  settingsSpecs,
+} from './games/index.js';
+
+export type {
+  Card,
+  CardValue,
+  Color,
+  LastCardAction,
+  LastCardState,
+  LastCardView,
+  SeatState,
+} from './games/last-card/types.js';
+export { lastCard } from './games/last-card/index.js';
+export {
+  buildDeck,
+  canPlayOn,
+  cardValue,
+  decksFor,
+  handValue,
+  isNumberCard,
+  isWild,
+  shuffle,
+} from './games/last-card/deck.js';
+
+export type {
+  LastTurn,
+  LiveSnake,
+  MoveStep,
+  SnakesAction,
+  SnakesSeat,
+  SnakesState,
+  SnakesView,
+} from './games/snakes-ladders/types.js';
+export { snakesLadders } from './games/snakes-ladders/index.js';
+export type { CardId, MysteryCard } from './games/snakes-ladders/cards.js';
+export { MYSTERY_DECK, cardById, drawCard } from './games/snakes-ladders/cards.js';
+export type {
+  CrowdPrompt,
+  Prompt,
+  StandoffPrompt,
+  VoteEffect,
+  VoteOption,
+} from './games/snakes-ladders/prompts.js';
+export {
+  CROWD_VOTE_MS,
+  STANDOFF_MS,
+  STANDOFF_PERIOD_MS,
+  VOTE_PAIRS,
+  inZone,
+  needleAt,
+  tallyVotes,
+} from './games/snakes-ladders/prompts.js';
+export {
+  COLUMNS,
+  CROWD_TILES,
+  FIRST_TILE,
+  LADDERS,
+  LAST_TILE,
+  MYSTERY_TILES,
+  SNAKES,
+  ladderAt,
+  snakeAt,
+  tileToCell,
+  walkPath,
+} from './games/snakes-ladders/board.js';
+export type { SnakesSettings, SnakesTurnTimer } from './games/snakes-ladders/settings.js';
+export { MAX_ROLLS_PER_TURN, SNAKES_DEFAULTS, snakesSettings } from './games/snakes-ladders/settings.js';
+
+export type {
+  BallWindow,
+  Batter,
+  BowlerFigures,
+  HandCricketAction,
+  HandCricketState,
+  HandCricketView,
+  Innings,
+  InningsView,
+  Outcome,
+  Pick,
+  ResolvedBall,
+  Side,
+  Toss,
+} from './games/hand-cricket/types.js';
+export { NUMBERS, isPick } from './games/hand-cricket/types.js';
+export { handCricket } from './games/hand-cricket/index.js';
+export type { HandCricketSettings, Overs, PickSeconds } from './games/hand-cricket/settings.js';
+export {
+  BALLS_PER_OVER,
+  HAND_CRICKET_DEFAULTS,
+  handCricketSettings,
+} from './games/hand-cricket/settings.js';
+export { splitTeams, wicketsAvailable } from './games/hand-cricket/rules.js';
+
+export type { LastCardSettings, TurnTimer } from './games/last-card/settings.js';
+export { LAST_CARD_DEFAULTS, lastCardSettings } from './games/last-card/settings.js';
+
+/** Bumped by hand; the client logs it on boot so we can see what is deployed. */
+export const SHARED_VERSION = '0.1.0';

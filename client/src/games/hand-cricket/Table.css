@@ -1,0 +1,422 @@
+/* The Hand Cricket table, laid out as design/hand-cricket-mock.html does it. */
+
+.hc-screen {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 12px 16px var(--bar-clear);
+}
+
+/* ---------- scorebar ---------- */
+
+.hc-scorebar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  flex-wrap: wrap;
+  color: var(--line);
+}
+
+.hc-batting { display: flex; align-items: center; gap: 10px; }
+.hc-batting b { font-size: 15px; font-weight: 900; }
+
+.hc-tdot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--tc);
+  border: 2.5px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.hc-score { font: 400 42px/1 var(--fd); }
+.hc-score small { font-size: 20px; color: #5a5182; margin-left: 6px; }
+
+.hc-need {
+  background: var(--sun);
+  border: 2.5px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 12px;
+  font-weight: 900;
+  font-size: 15px;
+  transform: rotate(-2deg);
+}
+
+.hc-need.done { background: var(--mint); }
+
+.hc-overdots { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+.hc-lbl { font-size: 13px; color: #5a5182; margin-right: 4px; }
+.hc-none { font-size: 13px; color: #5a5182; }
+
+/* A ball's outcome, as a bead. Colour and glyph both, per rule 8. */
+.hc-bd {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--line);
+  border-radius: 50%;
+  font: 400 15px var(--fd);
+  background: var(--paper-2);
+  color: var(--line);
+  flex: 0 0 auto;
+}
+
+.hc-bd.w { background: var(--red); color: var(--paper); }
+.hc-bd.four { background: var(--pink); }
+.hc-bd.six { background: var(--sun); }
+.hc-bd.run { background: var(--sky); color: var(--paper); }
+
+/* ---------- the ground ---------- */
+
+.hc-scene {
+  position: relative;
+  height: clamp(240px, calc(100dvh - 440px), 430px);
+  margin-top: 14px;
+  border: 3px solid var(--line);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background: #a8dcff;
+}
+
+.hc-scene-cv { display: block; width: 100%; height: 100%; }
+
+.hc-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 16px;
+  box-shadow: 3px 3px 0 var(--line);
+  z-index: 2;
+  color: var(--line);
+}
+
+.hc-chip-bowl { top: 10px; left: 10px; }
+.hc-chip-bat { top: 10px; right: 10px; }
+.hc-who small { display: block; font-size: 11.5px; color: #5a5182; font-weight: 900; }
+.hc-who b {
+  display: block;
+  font-size: 15px;
+  font-weight: 900;
+  max-width: 9ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-tile {
+  width: 46px;
+  height: 54px;
+  flex: none;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font: 400 28px var(--fd);
+  background: var(--paper-2);
+  color: var(--line);
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+/* Thrown, but not yours to see. */
+.hc-tile.locked { background: var(--line); color: var(--paper); font-size: 15px; }
+
+.hc-stamp {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.hc-stamp span {
+  font: 400 clamp(46px, 9vw, 96px) / 1 var(--fd);
+  color: var(--c, var(--paper));
+  -webkit-text-stroke: 4px var(--line);
+  paint-order: stroke fill;
+  text-shadow: 7px 7px 0 var(--line);
+  opacity: 0;
+  white-space: nowrap;
+  animation: hc-stamp 1.15s cubic-bezier(0.3, 1.6, 0.5, 1) forwards;
+}
+
+@keyframes hc-stamp {
+  0% { opacity: 0; transform: rotate(-8deg) scale(0.3); }
+  25% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  78% { opacity: 1; transform: rotate(-6deg) scale(1.03); }
+  100% { opacity: 0; transform: rotate(-6deg) scale(1.1); }
+}
+
+/* ---------- the three columns ---------- */
+
+.hc-grid {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr) 290px;
+  gap: 20px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.hc-centre { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hc-panel { padding: 14px 16px; color: var(--line); }
+.hc-panel h3 { font-size: 19px; margin: 0 0 8px; }
+.hc-panel h3 small { font-weight: 800; font-size: 12.5px; color: #5a5182; margin-left: 6px; }
+
+.hc-card { list-style: none; margin: 0 0 14px; padding: 0; }
+
+.hc-card li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 2px solid var(--paper-2);
+  font-size: 14px;
+}
+
+.hc-card li:first-child { border-top: 0; }
+.hc-card li.out { opacity: 0.55; }
+.hc-card li.now { background: linear-gradient(90deg, rgba(255, 194, 26, 0.35), transparent); border-radius: 10px; }
+
+.hc-av { width: 26px; height: 26px; border-radius: 9px; overflow: hidden; display: grid; place-items: center; flex: 0 0 auto; }
+.hc-av > .fighter-head { border: 0; border-radius: inherit; width: 100%; height: 100%; }
+
+.hc-nm { flex: 1; min-width: 0; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-nm em { font-style: normal; color: var(--red); }
+.hc-nm small { display: block; font-weight: 700; font-size: 11.5px; color: #5a5182; }
+.hc-rb { font: 400 17px var(--fd); }
+.hc-rb small { font-size: 12px; color: #5a5182; margin-left: 2px; }
+
+/* ---------- the picker ---------- */
+
+.hc-picker { padding: 16px 18px 18px; color: var(--line); }
+.hc-picker-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.hc-picker-head h2 { font-size: 26px; margin: 0; }
+.hc-picker-head p { margin: 3px 0 0; font-size: 14px; color: #5a5182; line-height: 1.35; }
+
+.hc-timer { position: relative; width: 58px; height: 58px; flex: none; }
+.hc-timer svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.hc-timer circle { fill: none; stroke-width: 6; }
+.hc-timer .bg { stroke: var(--paper-2); }
+.hc-timer .fg { stroke: var(--pink); stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
+.hc-timer b { position: absolute; inset: 0; display: grid; place-items: center; font: 400 22px var(--fd); }
+
+.hc-nums {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 76px));
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.hc-num {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  box-shadow: 4px 4px 0 var(--line);
+  font: 400 clamp(26px, 3.4vw, 40px) / 1 var(--fd);
+  color: var(--line);
+  background: var(--c);
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+  padding: 0;
+  min-width: 0;
+}
+
+.hc-num:hover:not(:disabled) { transform: translate(-1px, -2px) rotate(-4deg); }
+
+.hc-num[aria-pressed='true'] {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+  outline: 4px solid var(--line);
+  outline-offset: 3px;
+}
+
+/* Not your throw: it has to look like it, not just refuse the click. */
+.hc-num:disabled:not([aria-pressed='true']) { opacity: 0.4; cursor: default; }
+
+.hc-status { margin: 14px 0 0; font-size: 14.5px; min-height: 1.3em; color: #3d3566; }
+
+/* ---------- this over, commentary ---------- */
+
+.hc-bowler-now { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.hc-bowler-now b { display: block; font-weight: 900; }
+.hc-bowler-now small { display: block; font-size: 13px; color: #5a5182; }
+.hc-bigdots { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; min-height: 28px; align-items: center; }
+.hc-lastover { font-size: 13.5px; color: #5a5182; margin: 0 0 14px; }
+.hc-comm { list-style: none; margin: 0; padding: 0; font-size: 14px; max-height: 220px; overflow: auto; }
+.hc-comm li { padding: 8px 0; border-top: 2px solid var(--paper-2); line-height: 1.35; }
+.hc-comm li:first-child { border-top: 0; font-weight: 900; }
+.hc-comm li b { font-family: var(--fd); font-weight: 400; font-size: 15px; margin-right: 6px; }
+
+/* ---------- the toss ---------- */
+
+.hc-toss {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 10px 16px 40px;
+}
+
+.hc-toss-title {
+  font-size: clamp(40px, 6vw, 64px);
+  color: var(--sun);
+  -webkit-text-stroke: 3px var(--line);
+  paint-order: stroke fill;
+  text-shadow: 5px 5px 0 var(--line);
+  margin: 0;
+}
+
+.hc-toss-sub { font-size: 18px; margin: 10px 0 0; line-height: 1.45; }
+
+/* The captains sit behind the coin, so the stage has to stack them. */
+.hc-coin-stage { position: relative; max-width: 640px; margin: 0 auto; }
+
+.hc-toss-cv {
+  position: absolute;
+  left: 0;
+  bottom: -16px;
+  width: 100%;
+  height: 240px;
+  pointer-events: none;
+}
+
+.hc-coin-wrap {
+  position: relative;
+  perspective: 900px;
+  margin: 36px auto 30px;
+  width: 190px;
+  height: 190px;
+}
+
+.hc-coin { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
+.hc-coin.flip { animation: hc-flipcoin 1.5s cubic-bezier(0.25, 0.8, 0.3, 1) forwards; }
+
+@keyframes hc-flipcoin {
+  0% { transform: translateY(0) rotateY(0); }
+  40% { transform: translateY(-120px) rotateY(var(--spin-half)); }
+  100% { transform: translateY(0) rotateY(var(--spin)); }
+}
+
+.hc-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 5px solid var(--line);
+  box-shadow: inset 0 0 0 10px rgba(14, 10, 46, 0.12);
+  display: grid;
+  place-items: center;
+  backface-visibility: hidden;
+  font: 400 64px var(--fd);
+  color: var(--line);
+}
+
+.hc-face.heads { background: var(--sun); }
+.hc-face.tails { background: var(--mint); transform: rotateY(180deg); }
+.hc-face small { display: block; font: 900 15px var(--fb); margin-top: -6px; }
+
+.hc-coin-shadow {
+  position: relative;
+  width: 140px;
+  height: 20px;
+  margin: -14px auto 0;
+  border-radius: 50%;
+  background: rgba(14, 10, 46, 0.55);
+}
+
+.hc-toss-result { min-height: 150px; margin-top: 26px; }
+
+.hc-toss-result h2 {
+  font-size: 34px;
+  color: var(--sun);
+  -webkit-text-stroke: 2px var(--line);
+  paint-order: stroke fill;
+  text-shadow: 4px 4px 0 var(--line);
+  margin: 0;
+}
+
+.hc-toss-result p { margin: 10px 0 18px; font-size: 16px; opacity: 0.9; }
+.hc-toss-wait { font-weight: 900; opacity: 0.75; }
+
+.hc-callrow { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.hc-callrow .btn { min-width: 150px; font-size: 24px; }
+
+/* The coin is the whole point, so it still turns over — just at once. */
+@media (prefers-reduced-motion: reduce) {
+  .hc-coin.flip { animation: none; transform: rotateY(var(--spin)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-stamp span { animation: hc-stamp-calm 1.15s linear forwards; transform: rotate(-6deg); }
+  @keyframes hc-stamp-calm { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 900px) {
+  .hc-screen { padding: 10px 14px var(--bar-clear); }
+  .hc-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+
+  /*
+   * Stacked, the three columns put the scorecard between the ground and the
+   * picker — so the one thing you have to hit before the clock runs out sat
+   * below the fold. The picker comes first on a phone; the scorecard and the
+   * over are things you read between balls, not during one.
+   */
+  .hc-centre { order: -1; }
+  .hc-score { font-size: 32px; }
+  .hc-scene { height: clamp(200px, 38dvh, 300px); }
+  .hc-nums { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .hc-comm { max-height: 170px; }
+}
+
+/* The beat between balls, in the slot the pick clock uses. */
+.hc-nextball {
+  width: 58px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-2);
+  padding: 4px 0 6px;
+  color: var(--line);
+}
+
+.hc-nextball small {
+  font-size: 10px;
+  font-weight: 900;
+  color: #5a5182;
+  line-height: 1;
+}
+
+.hc-nextball b { font: 400 24px/1 var(--fd); }
+
+/* The card that replaces the picker while the winners are still out there. */
+.hc-wincard {
+  padding: 22px 18px;
+  text-align: center;
+  color: var(--line);
+}
+
+.hc-wincard h2 {
+  font-size: clamp(30px, 5vw, 44px);
+  margin: 0 0 8px;
+  color: var(--sun);
+  -webkit-text-stroke: 3px var(--line);
+  paint-order: stroke fill;
+  text-shadow: 4px 4px 0 var(--line);
+}
+
+.hc-wincard p { margin: 0; font-size: 16px; font-weight: 800; }
+
+.hc-wincard-note {
+  margin-top: 10px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: #5a5182;
+}

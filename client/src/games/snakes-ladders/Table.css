@@ -1,0 +1,378 @@
+/*
+ * The play screen, laid out as design/snakes-ladders-mock.html does it:
+ * board on the left, and a side column of three stickers — the turn card
+ * (whose turn, dice tray, roll), the race, and what happened.
+ */
+
+.sl-screen {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 12px 16px var(--bar-clear);
+}
+
+.sl-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.sl-board-wrap {
+  position: relative;
+  /*
+   * Kept inside the window, as the mock does it. A board taller than the
+   * viewport puts the prompts — which are centred on it and run on a clock —
+   * partly off-screen, and you cannot answer what you cannot see.
+   */
+  width: min(100%, calc(100dvh - var(--nav-h) - 72px));
+  margin: 0 auto;
+  background: var(--ink-3);
+  border: 4px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 8px 8px 0 var(--line);
+  padding: 10px;
+  min-width: 0;
+}
+
+.sl-board {
+  display: block;
+  width: 100%;
+  /* square from first paint, so there is no jump before the canvas sizes
+     its own backing store on the first frame */
+  aspect-ratio: 1;
+  touch-action: manipulation;
+}
+
+.sl-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ---------- the turn card ---------- */
+
+.sl-turn {
+  padding: 16px;
+}
+
+.sl-turn-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Whose turn it is, carried by their jersey colour and not only by the name. */
+.sl-turn-av {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 4px var(--c, var(--sun));
+}
+
+.sl-turn-who {
+  min-width: 0;
+}
+
+.sl-turn-who small {
+  display: block;
+  font-size: 13px;
+  color: #5a5182;
+  font-weight: 900;
+}
+
+.sl-turn-who b {
+  display: block;
+  font: 400 26px/1 var(--fd);
+  color: var(--line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-round {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--line);
+  background: var(--paper-2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+/* ---------- the dice tray ---------- */
+
+.sl-tray {
+  margin: 14px 0 12px;
+  height: 132px;
+  border: 3px solid var(--line);
+  border-radius: 18px;
+  /* felt green with a dotted weave, so the dice have somewhere to land */
+  background: #1f9f5d;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1.4px, transparent 1.7px);
+  background-size: 14px 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.sl-dice-cv {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sl-roll {
+  width: 100%;
+  font-size: 22px;
+  padding: 17px;
+  /* the button is held, not tapped, so the browser must not treat a hold as
+     a scroll or a text selection */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sl-roll.holding {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+}
+
+.sl-auto {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.sl-auto i {
+  display: block;
+  height: 100%;
+  background: var(--pink);
+  transition: width 0.25s linear;
+}
+
+.sl-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #5a5182;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+/* ---------- the race ---------- */
+
+.sl-race {
+  padding: 14px 16px;
+}
+
+.sl-race h3,
+.sl-logbox h3 {
+  font-size: 21px;
+  margin: 0 0 8px;
+  color: var(--line);
+}
+
+.sl-race ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sl-race li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 2px solid var(--paper-2);
+  color: var(--line);
+}
+
+.sl-race li:first-child {
+  border-top: 0;
+}
+
+.sl-race li.now {
+  background: linear-gradient(90deg, rgba(255, 194, 26, 0.35), transparent);
+  border-radius: 10px;
+}
+
+.sl-race li.away {
+  opacity: 0.5;
+}
+
+.sl-av {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.sl-nm {
+  flex: 1;
+  min-width: 0;
+}
+
+.sl-nm b {
+  display: block;
+  font-size: 15px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-nm b em {
+  font-style: normal;
+  opacity: 0.55;
+  font-weight: 700;
+}
+
+.sl-prog {
+  height: 7px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.sl-prog i {
+  display: block;
+  height: 100%;
+  background: var(--c);
+  transition: width 0.3s ease-out;
+}
+
+.sl-tile {
+  font: 400 20px var(--fd);
+  min-width: 34px;
+  text-align: right;
+}
+
+.sl-badges {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.sl-badges span {
+  font-size: 11px;
+  font-weight: 900;
+  border: 2px solid var(--line);
+  border-radius: 7px;
+  padding: 0 5px;
+  background: var(--c);
+}
+
+.sl-goal {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #5a5182;
+  text-align: center;
+}
+
+/* ---------- what happened ---------- */
+
+.sl-logbox {
+  padding: 14px 16px;
+}
+
+.sl-logbox ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.sl-logbox li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+  padding: 6px 0;
+  border-top: 2px solid var(--paper-2);
+  line-height: 1.3;
+  color: var(--line);
+}
+
+.sl-logbox li:first-child {
+  border-top: 0;
+}
+
+.sl-log-av {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+/* Qualified: an interface icon also carries .ui-icon, which sizes it to 18
+   and would otherwise win or lose on source order alone. */
+.sl-logbox .sl-log-ico {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.sl-log-dot {
+  width: 10px;
+  height: 10px;
+  margin: 0 8px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  border: 2px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.sl-log-empty {
+  color: #5a5182;
+  font-weight: 800;
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 900px) {
+  .sl-screen {
+    padding: 10px 14px var(--bar-clear);
+  }
+
+  .sl-layout {
+    /* minmax(0,…) not 1fr: a plain 1fr column takes its min-content width
+       and pushes the page sideways. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .sl-board-wrap {
+    border-radius: 18px;
+    box-shadow: 5px 5px 0 var(--line);
+    padding: 7px;
+  }
+
+  .sl-side {
+    gap: 12px;
+  }
+
+  /* the tray shrinks but stays — it is the whole point of the roll */
+  .sl-tray {
+    height: 96px;
+  }
+
+  .sl-race ul,
+  .sl-logbox ul {
+    max-height: 170px;
+  }
+}

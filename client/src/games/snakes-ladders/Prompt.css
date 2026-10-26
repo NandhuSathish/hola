@@ -1,0 +1,193 @@
+/* Sits over the board, as the mock's overlay does, not over the page. */
+.sl-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 10, 46, 0.72);
+  border-radius: 24px;
+  padding: 14px;
+}
+
+.sl-prompt-card {
+  padding: 22px;
+  width: min(420px, 100%);
+  text-align: center;
+}
+
+.sl-prompt-card h2 {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+.sl-prompt-who {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--line);
+}
+
+.sl-prompt-who span {
+  font-size: 22px;
+}
+
+.sl-prompt-sub {
+  margin: 0 0 16px;
+  color: #5a5182;
+  font-size: 15px;
+}
+
+.sl-prompt-go {
+  width: 100%;
+  font-size: 22px;
+  min-height: 52px;
+}
+
+/* ---------- the standoff meter ---------- */
+.sl-meter {
+  position: relative;
+  height: 40px;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-2);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.sl-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--mint);
+  border-left: 3px solid var(--line);
+  border-right: 3px solid var(--line);
+}
+
+.sl-needle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 6px;
+  margin-left: -3px;
+  background: var(--line);
+  border-radius: 3px;
+}
+
+/* ---------- the vote ---------- */
+/* Two cards side by side, as the mock has them. */
+.sl-opts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sl-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 150px;
+  padding: 12px 8px;
+  /* each option wears its own colour, and carries the same icon the matching
+     mystery card does — shape as well as colour (rule 8) */
+  background: var(--c, var(--paper-2));
+  color: var(--line);
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--line);
+  cursor: pointer;
+  text-align: center;
+}
+
+.sl-opt svg {
+  width: 46px;
+  height: 46px;
+}
+
+.sl-opt b {
+  font: 400 17px/1.1 var(--fd);
+}
+
+/* The one you picked, outlined rather than merely coloured. */
+.sl-opt[aria-pressed='true'] {
+  outline: 4px solid var(--line);
+  outline-offset: 3px;
+}
+
+/*
+ * A vote you cannot cast has to look like one. These are the same sticker
+ * buttons as everywhere else, so without this the subject of the vote — who
+ * is never allowed to vote on their own fate — sees two perfectly pressable
+ * options that do nothing.
+ */
+.sl-opt:disabled {
+  cursor: default;
+  filter: saturate(0.25);
+  opacity: 0.6;
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+/* Your own pick stays bright after you vote: that is information, not a
+   control you have lost. */
+.sl-opt.chosen:disabled {
+  filter: none;
+  opacity: 1;
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.sl-tally {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #5a5182;
+}
+
+.sl-locked {
+  color: var(--line);
+  opacity: 0.75;
+}
+
+.sl-opt-votes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  min-height: 26px;
+  margin-top: auto;
+}
+
+/* ---------- the draining deadline ---------- */
+.sl-prompt-bar {
+  height: 8px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--paper-2);
+}
+
+.sl-prompt-bar i {
+  display: block;
+  height: 100%;
+  background: var(--sun);
+  transition: width 0.1s linear;
+}
+
+@media (max-width: 820px) {
+  .sl-prompt-card { padding: 18px; }
+  .sl-opt { min-height: 132px; }
+  .sl-opt svg { width: 38px; height: 38px; }
+  .sl-opt b { font-size: 15px; }
+  .sl-prompt-card h2 { font-size: 24px; }
+  .sl-meter { height: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-prompt-bar i { transition: none; }
+}

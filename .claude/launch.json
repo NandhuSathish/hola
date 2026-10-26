@@ -1,0 +1,10 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "//": "Attach only. `npm run dev` runs Vite on 5173 and the API on 3000, and starting it from here injects PORT=5173, which makes the API grab Vite's port and break its own websocket proxy. Run `npm run dev` in a terminal first, then preview this.",
+      "name": "holla",
+      "url": "http://localhost:5173"
+    }
+  ]
+}

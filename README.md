@@ -1,35 +1,52 @@
 # holla!
 
-Card nights with your crew. Voice is built in, so just open the link and start talking.
+Card nights with your crew. Open the link, pick a game, start playing.
 
-A browser party game for up to 15 friends. The first game is **Last Card** (Uno-style), with more small games to come.
+A browser party game for up to 15 friends: **Last Card** (Uno-style), **Snakes &
+Ladders** and **Hand Cricket**. No sign-up, nothing to install.
+
+Built-in voice chat lands in **v2** — keep a call open alongside for now.
 
 ## Run it locally
 
-1. Copy `.env.example` to `.env` and fill in your LiveKit values (from https://cloud.livekit.io → your project → Settings → Keys).
-2. Install and start:
+1. Install and start:
 
    ```
    npm install
    npm run dev
    ```
 
-3. Open the URL Vite prints. Open a second tab to play against yourself.
+2. Open the URL Vite prints. Open a second tab to play against yourself — each
+   tab is its own player.
 
-Mic access only works on `https` or `localhost`. To try it on your phone, use the deployed site or a tunnel.
+To try it on your phone, use the deployed site or a tunnel.
 
 ## Deploy (Render, free)
 
-- New → Web Service → connect this repo
-- Build command: `npm install && npm run build`
-- Start command: `npm start`
-- Instance type: Free
-- Environment: add `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
+`render.yaml` in the repo root is a Blueprint, so there is nothing to type in:
 
-The free service sleeps after 15 minutes without traffic. Open the link a minute before game night.
+- New → Blueprint → connect this repo → Apply
+
+It deploys `main`, on the free instance, with no environment variables. Change
+the `branch` in `render.yaml` if you would rather ship from `dev`.
+
+Two things about the free tier worth knowing before a game night:
+
+- It sleeps after 15 minutes without traffic and takes about a minute to wake.
+  The first friend to tap a cold link waits that minute. Open it yourself first.
+- Waking is a restart, and rooms live in memory, so a sleep ends every game in
+  progress. That is the trade v1 makes (CLAUDE.md rule 7) — it only bites if
+  the room sits idle for a quarter of an hour, which a game night will not.
+
+The `LIVEKIT_*` values in `.env.example` are for v2 and are not read by anything
+in v1.
 
 ## Docs
 
 - `CLAUDE.md` — how the project is built, rules for Claude Code, build phases
-- `REFERENCE.md` — full spec: game rules, socket events, voice flow, design tokens, links
+- `REFERENCE.md` — full spec: game rules, socket events, module interface,
+  design tokens, links
+- `CHANGELOG.md` — what has been built, and the decisions behind it
 - `design/holla-mock.html` — the UI mock everything is based on
+- `design/hand-cricket-mock.html` — the Hand Cricket mock
+- `design/snakes-ladders-mock.html` — the Snakes & Ladders mock

@@ -1,0 +1,174 @@
+.results-screen {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 16px var(--bar-clear);
+}
+
+.results-inner {
+  text-align: center;
+}
+
+.winner {
+  margin-bottom: 24px;
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.winner-crown {
+  font-size: 40px;
+  line-height: 1;
+  transform: rotate(-12deg);
+  margin-bottom: -12px;
+}
+
+.winner-av {
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 10px;
+}
+
+.winner h1 {
+  font-size: clamp(34px, 7vw, 56px);
+  color: var(--sun);
+  -webkit-text-stroke: 3px var(--line);
+  paint-order: stroke fill;
+  text-shadow: 5px 5px 0 var(--line);
+  line-height: 1.05;
+}
+
+.winner .sub {
+  font-size: 17px;
+  margin: 12px 0 0;
+  opacity: 0.9;
+}
+
+.scores {
+  padding: 8px 18px;
+  text-align: left;
+}
+
+.scores table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15.5px;
+}
+
+.scores td,
+.scores th {
+  padding: 10px 6px;
+  border-bottom: 2px solid var(--paper-2);
+}
+
+.scores th {
+  font-size: 13px;
+  color: #5a5182;
+  text-align: left;
+  font-weight: 900;
+}
+
+.scores tr:last-child td {
+  border-bottom: 0;
+}
+
+.scores .num {
+  text-align: right;
+  font-family: var(--fd);
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.scores .num.strong {
+  color: var(--line);
+  font-size: 20px;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 900;
+}
+
+.who-av {
+  display: inline-grid;
+  place-items: center;
+}
+
+.who em {
+  font-style: normal;
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+/* ---------- podium ---------- */
+.podium {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 0 0 26px;
+}
+
+.step {
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-av {
+  display: inline-grid;
+  place-items: center;
+}
+
+.step-name {
+  font-weight: 900;
+  font-size: 14px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step .block {
+  width: 100%;
+  border: 3px solid var(--line);
+  border-radius: 16px 16px 6px 6px;
+  box-shadow: 5px 5px 0 var(--line);
+  display: grid;
+  place-items: center;
+  font: 400 38px var(--fd);
+  color: var(--line);
+}
+
+.scores tr.mine td {
+  background: rgba(255, 194, 26, 0.18);
+}
+
+.results-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+
+.results-actions .host-note {
+  margin: 0;
+  opacity: 0.8;
+}
+
+@media (max-width: 820px) {
+  .results-screen { padding: 20px 14px var(--bar-clear); }
+  .podium { gap: 8px; }
+  .step { width: 31%; }
+  .step-av .fighter-head { width: 34px; height: 34px; }
+  .step-name { font-size: 12.5px; }
+  .step .block { font-size: 28px; }
+  .winner-crown { font-size: 32px; }
+  .scores { padding: 6px 12px; }
+  .scores table { font-size: 14px; }
+}

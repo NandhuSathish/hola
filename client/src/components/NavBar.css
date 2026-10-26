@@ -1,0 +1,229 @@
+/*
+ * The bar across the top of every screen, built like the mock's own
+ * (`.mockbar` in design/holla-mock.html): no solid band and no edge — the
+ * page colour simply fades out beneath it, so what scrolls up into it
+ * dissolves rather than sliding behind a wall.
+ *
+ * Wordmark on the left, one cream pill of actions on the right, which is how
+ * the mock groups its controls.
+ */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--nav-h);
+  box-sizing: border-box;
+  padding: 12px clamp(12px, 3vw, 20px);
+  /* clears the iOS notch when installed or in landscape */
+  padding-left: max(clamp(12px, 3vw, 20px), env(safe-area-inset-left));
+  padding-right: max(clamp(12px, 3vw, 20px), env(safe-area-inset-right));
+  background: linear-gradient(var(--ink) 70%, transparent);
+  /* The gradient's faded tail must not swallow clicks meant for the page. */
+  pointer-events: none;
+}
+
+.navbar > * {
+  pointer-events: auto;
+}
+
+/* ---------- brand ---------- */
+
+.nav-brand {
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font: 400 26px/1 var(--fd);
+  color: var(--sun);
+  text-shadow: 3px 3px 0 var(--line);
+  flex: 0 0 auto;
+  transition: transform 0.12s;
+}
+
+.nav-brand:hover,
+.nav-brand:focus-visible {
+  transform: translateY(-2px) rotate(-2deg);
+}
+
+/* ---------- the actions ---------- */
+
+/*
+ * Three separate stickers rather than one pill in segments. Copying the code
+ * and walking out of the room are different enough that they should not look
+ * like two halves of the same control — and a red Leave sharing an edge with
+ * the code is an easy mis-tap.
+ */
+.nav-right {
+  /* Stays right even when the brand is hidden and it is the only child. */
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nav-game,
+.nav-code,
+.nav-leave,
+.nav-react,
+.nav-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--line);
+  font-family: var(--fb);
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--line);
+  background: var(--paper);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.nav-code,
+.nav-leave,
+.nav-react {
+  cursor: pointer;
+  justify-content: center;
+}
+
+/*
+ * Reactions.
+ *
+ * The mock pins these to a bar across the bottom of the screen, but that
+ * strip is where our games put the things you actually press — the Last Card
+ * hand, the Hand Cricket picker — so here it is one button that opens a
+ * palette, and the games keep their room.
+ */
+.nav-react {
+  width: 44px;
+  padding: 0;
+  background: var(--sky);
+  font-size: 21px;
+  line-height: 1;
+}
+
+.nav-react:hover,
+.nav-react:focus-visible {
+  background: var(--mint);
+}
+
+.nav-react.open {
+  background: var(--mint);
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+}
+
+/* The game you are in is a label, not a button, so it sits flatter. */
+.nav-game {
+  background: var(--paper-2);
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+/* A dot in the game's colour, so it is not the name alone doing the work. */
+.nav-game i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2.5px solid var(--line);
+  background: var(--c);
+  flex: 0 0 auto;
+}
+
+.nav-game span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-state {
+  background: var(--sun);
+}
+
+.nav-code b {
+  font: 400 19px/1 var(--fd);
+  letter-spacing: 0.08em;
+}
+
+.nav-code:hover,
+.nav-code:focus-visible {
+  background: var(--paper-2);
+}
+
+.nav-code.copied {
+  background: var(--mint);
+}
+
+.nav-leave {
+  background: var(--red);
+  color: var(--paper);
+}
+
+.nav-code:active,
+.nav-leave:active,
+.nav-react:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+}
+
+.ui-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 620px) {
+  .navbar {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .nav-brand {
+    font-size: 23px;
+  }
+
+  /* Below this the three would outgrow the bar. The dot still says which
+     game it is and the door still says leave, and both keep their labels
+     for a screen reader. */
+  .nav-game span,
+  .nav-leave span,
+  .nav-state {
+    display: none;
+  }
+
+  .nav-right {
+    gap: 7px;
+  }
+
+  .nav-game,
+  .nav-code,
+  .nav-leave {
+    padding: 0 10px;
+  }
+
+  .nav-react {
+    width: 40px;
+  }
+
+  .nav-game {
+    padding: 0 9px;
+  }
+}
+
+/* Only at the very narrowest does the pill need the whole bar. */
+@media (max-width: 330px) {
+  .nav-brand {
+    display: none;
+  }
+}

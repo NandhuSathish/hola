@@ -1,0 +1,36 @@
+.fighter-head {
+  display: block;
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  image-rendering: auto;
+  flex: 0 0 auto;
+}
+
+.fighter-preview {
+  display: block;
+  width: 100%;
+  /* set by the caller as a custom property, so CSS can still respond */
+  height: var(--h, 150px);
+}
+
+/*
+ * A head nested in one of the app's own avatar wells (.av, .sl-av, .pav…)
+ * drops its own frame and takes the well's shape instead, so the turn ring
+ * and the sticker border stay with the thing that already draws them.
+ */
+/* .av draws a turn ring with ::before outside its own box, so it must not
+   clip; the head takes the round shape itself instead. */
+.av > .fighter-head {
+  border: 0;
+  border-radius: 50%;
+  width: 100%;
+  height: 100%;
+}
+
+.sl-av > .fighter-head {
+  border: 0;
+  border-radius: inherit;
+  width: 100%;
+  height: 100%;
+}

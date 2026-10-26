@@ -145,6 +145,40 @@ h1,h2,h3{font-family:var(--fd);font-weight:400;margin:0;letter-spacing:.3px}
 .start{width:100%;font-size:24px;padding:18px}
 .host-note{text-align:center;font-size:14px;color:#5a5182;margin:12px 0 0}
 
+/* ---------- games picker ---------- */
+.games-head{margin:4px 0 26px;max-width:46ch}
+.games-head p{margin:10px 0 0;font-size:17px;line-height:1.45;opacity:.85}
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:22px;align-items:stretch}
+.gcard{padding:0;overflow:hidden;display:flex;flex-direction:column;transform:rotate(-.6deg)}
+.gcard:nth-of-type(even){transform:rotate(.7deg)}
+.gart{height:168px;display:grid;place-items:center;border-bottom:3px solid var(--line);position:relative;background:var(--ink-3);background-image:radial-gradient(rgba(255,244,220,.1) 1.4px, transparent 1.7px);background-size:14px 14px}
+.gbadge{position:absolute;top:11px;right:11px;font:400 15px var(--fd);padding:4px 12px;border:3px solid var(--line);border-radius:999px;box-shadow:3px 3px 0 var(--line);color:var(--line)}
+.gbadge.ready{background:var(--mint)}
+.gbadge.soon{background:var(--paper-2)}
+.gbody{padding:17px 18px 18px;display:flex;flex-direction:column;gap:11px;flex:1}
+.gbody h3{font-size:27px;line-height:1}
+.gbody p{margin:0;font-size:14.5px;line-height:1.45;color:#5a5182;flex:1}
+.gmeta{display:flex;gap:7px;flex-wrap:wrap}
+.gmeta span{background:var(--paper-2);border:2px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:900}
+.gcard .btn{width:100%;margin-top:3px}
+.gcard.soon .gart{filter:saturate(.5) brightness(.82)}
+.btn:disabled{filter:saturate(.25);opacity:.6;cursor:not-allowed;box-shadow:2px 2px 0 var(--line)}
+.btn:disabled:active{transform:none;box-shadow:2px 2px 0 var(--line)}
+.gnext{border:3px dashed rgba(255,244,220,.32);border-radius:22px;display:grid;place-items:center;text-align:center;padding:28px 24px;min-height:262px;color:rgba(255,244,220,.72)}
+.gnext .plus{font:400 34px var(--fd);color:var(--sun);text-shadow:3px 3px 0 var(--line)}
+.gnext b{display:block;margin:8px 0 6px;font-size:16.5px;color:var(--paper)}
+.gnext span{font-size:13.5px;line-height:1.5;display:block;max-width:26ch;margin:0 auto}
+
+/* chosen game, shown in the lobby */
+.chosen-game{display:flex;align-items:center;gap:12px;background:var(--paper-2);border:3px solid var(--line);border-radius:16px;padding:10px 12px;margin-bottom:18px}
+.chosen-game>div{min-width:0}
+.chosen-game b{display:block;font-size:17px;font-weight:900;line-height:1.1}
+.chosen-game small{display:block;font-size:13px;color:#5a5182;font-weight:700;margin-top:2px}
+.chosen-game b,.chosen-game small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chosen-game .btn{margin-left:auto;font-size:15px;padding:9px 13px;box-shadow:3px 3px 0 var(--line);flex:none}
+.cg-art{width:40px;height:46px;position:relative;flex:none}
+.cg-art .card{--cw:28px;position:absolute;border-width:2px;box-shadow:2px 2px 0 var(--line)}
+
 /* ---------- avatars & seats ---------- */
 .av{width:58px;height:58px;border-radius:50%;border:3px solid var(--line);display:grid;place-items:center;font-size:28px;background:var(--bg);box-shadow:3px 3px 0 var(--line);position:relative;flex:none}
 .speaking .av::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:3px solid var(--mint);animation:talk 1s ease-out infinite}
@@ -300,6 +334,11 @@ dialog p{text-align:center;margin:0 0 18px;color:#5a5182;font-size:15px}
   .step{width:31%}
   .mini-logo{display:none}
   .banner{font-size:19px}
+  .ggrid{grid-template-columns:1fr;gap:18px}
+  .gcard,.gcard:nth-of-type(even){transform:none}
+  .gart{height:146px}
+  .gnext{min-height:0;padding:24px 20px}
+  .games-head p{font-size:16px}
 }
 @media (max-width:420px){ .voicebar .react:nth-child(n+7){display:none} }
 @media (prefers-reduced-motion:reduce){
@@ -313,6 +352,7 @@ dialog p{text-align:center;margin:0 0 18px;color:#5a5182;font-size:15px}
   <div class="mini-logo">holla!</div>
   <nav class="tabs" role="tablist" aria-label="Mock screens">
     <button class="tab" role="tab" data-go="home" aria-selected="true">Home</button>
+    <button class="tab" role="tab" data-go="games" aria-selected="false">Games</button>
     <button class="tab" role="tab" data-go="lobby" aria-selected="false">Lobby</button>
     <button class="tab" role="tab" data-go="table" aria-selected="false">Game table</button>
     <button class="tab" role="tab" data-go="results" aria-selected="false">Results</button>
@@ -346,11 +386,72 @@ dialog p{text-align:center;margin:0 0 18px;color:#5a5182;font-size:15px}
         </div>
       </div>
       <p class="mic-note" id="micNote">Your browser will ask for mic access once.</p>
-      <button class="btn btn-pink" data-go="lobby" type="button" style="font-size:24px;padding:18px">Create a room</button>
+      <button class="btn btn-pink" data-go="games" type="button" style="font-size:24px;padding:18px">Create a room</button>
       <div class="or">or join your friends</div>
       <div class="join-row">
         <input class="input" placeholder="Code" maxlength="4" aria-label="Room code">
         <button class="btn btn-sun" data-go="lobby" type="button">Join</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GAMES ================= -->
+<section class="screen" id="games">
+  <div class="games-head">
+    <h1 style="font-size:clamp(34px,5.5vw,48px)">Pick a game</h1>
+    <p>Your room, seats and voice chat stay the same whichever one you choose. The host can change it any time before the deal.</p>
+  </div>
+
+  <div class="ggrid">
+    <article class="sticker gcard">
+      <div class="gart" id="artLastCard"><span class="gbadge ready">Ready</span></div>
+      <div class="gbody">
+        <h3>Last Card</h3>
+        <p>Match the colour or the number, dump your hand fast, and shout before someone catches you sitting on one card.</p>
+        <div class="gmeta"><span>2–15 players</span><span>~10 min a round</span><span>Stacking &amp; 7-0</span></div>
+        <button class="btn btn-pink" data-go="lobby" data-game="last-card" type="button" style="font-size:20px">Play Last Card</button>
+      </div>
+    </article>
+
+    <article class="sticker gcard soon">
+      <div class="gart" id="artSnakes">
+        <span class="gbadge soon">Coming soon</span>
+        <svg viewBox="0 0 120 100" style="width:76%;height:76%" aria-hidden="true">
+          <rect x="9" y="9" width="102" height="82" rx="9" fill="var(--paper)" stroke="var(--line)" stroke-width="3"/>
+          <g stroke="var(--line)" stroke-width="1.8" opacity=".55">
+            <path d="M9 30h102M9 50h102M9 70h102M35 9v82M60 9v82M85 9v82"/>
+          </g>
+          <!-- ladder: dark underlay then colour, for the sticker outline look -->
+          <g stroke-linecap="round" fill="none">
+            <path d="M23 83 L31 19" stroke="var(--line)" stroke-width="9"/>
+            <path d="M36 83 L44 19" stroke="var(--line)" stroke-width="9"/>
+            <path d="M23 83 L31 19" stroke="var(--sun)" stroke-width="4.5"/>
+            <path d="M36 83 L44 19" stroke="var(--sun)" stroke-width="4.5"/>
+            <g stroke="var(--line)" stroke-width="2.6">
+              <path d="M24 72h12M26 58h12M28 44h12M30 30h12"/>
+            </g>
+          </g>
+          <!-- snake -->
+          <path d="M94 24 C72 36, 99 51, 77 63 C62 72, 87 79, 85 88" fill="none" stroke="var(--line)" stroke-width="12" stroke-linecap="round"/>
+          <path d="M94 24 C72 36, 99 51, 77 63 C62 72, 87 79, 85 88" fill="none" stroke="var(--mint)" stroke-width="6.5" stroke-linecap="round"/>
+          <circle cx="95" cy="23" r="8" fill="var(--mint)" stroke="var(--line)" stroke-width="3"/>
+          <circle cx="92.5" cy="21" r="1.7" fill="var(--line)"/>
+        </svg>
+      </div>
+      <div class="gbody">
+        <h3>Snakes &amp; Ladders</h3>
+        <p>Roll, climb, and get swallowed one square from home. Same room, same voice chat, a lot more shouting at dice.</p>
+        <div class="gmeta"><span>2–4 players</span><span>~15 min</span><span>In the works</span></div>
+        <button class="btn" type="button" disabled>Coming soon</button>
+      </div>
+    </article>
+
+    <div class="gnext">
+      <div>
+        <div class="plus">+</div>
+        <b>More games on the way</b>
+        <span>Each one drops in as its own module, so seats, reconnects and voice never get rebuilt.</span>
       </div>
     </div>
   </div>
@@ -380,8 +481,13 @@ dialog p{text-align:center;margin:0 0 18px;color:#5a5182;font-size:15px}
     </div>
 
     <aside class="sticker rules">
+      <div class="chosen-game">
+        <div class="cg-art" id="cgArt"></div>
+        <div><b id="cgName">Last Card</b><small id="cgMeta">Uno-style · 2–15 players</small></div>
+        <button class="btn" data-go="games" type="button">Change</button>
+      </div>
       <h2>House rules</h2>
-      <p class="sub">Everyone sees these before the deal.</p>
+      <p class="sub">These belong to Last Card. Other games bring their own.</p>
       <div class="rule"><div><b>Stack draw cards</b><small>Answer a +2 with a +2 and pass the pain on.</small></div><button class="switch" role="switch" aria-checked="true" aria-label="Stack draw cards"></button></div>
       <div class="rule"><div><b>7 swaps, 0 rotates</b><small>Play a 7 to swap hands, a 0 to pass every hand along.</small></div><button class="switch" role="switch" aria-checked="false" aria-label="7 swaps, 0 rotates"></button></div>
       <div class="rule"><div><b>Draw until you can play</b><small>Keep drawing instead of stopping at one card.</small></div><button class="switch" role="switch" aria-checked="false" aria-label="Draw until you can play"></button></div>
@@ -537,6 +643,12 @@ document.addEventListener('click', e=>{
   const g = e.target.closest('[data-go]');
   if(!g) return;
   if(g.hasAttribute('data-reset')) resetGame();
+  if(g.dataset.game){
+    const sel = GAMES[g.dataset.game];
+    $('#cgName').textContent = sel.name;
+    $('#cgMeta').textContent = sel.meta;
+    toast(`${sel.name} it is. Everyone in the room plays this one.`);
+  }
   go(g.dataset.go);
 });
 
@@ -548,7 +660,7 @@ function toast(msg){
 }
 
 /* ---------- home ---------- */
-const AVATARS=['🐯','🦊','🐼','🐸','🐙','🦄','🐨','🐵'];
+const AVATARS=['🐯','🦊','🐼','🐸','🐙','🦄','🐨','🐵','🐺','🐷','🦁','🐮','🐔','🐧','🦉','🐝'];
 AVATARS.forEach((a,i)=>{
   const b=document.createElement('button'); b.type='button'; b.textContent=a;
   b.setAttribute('role','radio'); b.setAttribute('aria-checked', i===0); b.setAttribute('aria-label','Avatar '+a);
@@ -560,6 +672,24 @@ AVATARS.forEach((a,i)=>{
   const el=cardEl(c); el.style.left=(i*74)+'px'; el.style.transform=`rotate(${-14+i*9}deg) translateY(${Math.abs(i-1.5)*10}px)`;
   $('#decoFan').appendChild(el);
 });
+/* ---------- games picker ---------- */
+const GAMES = { 'last-card': { name:'Last Card', meta:'Uno-style · 2–15 players' } };
+// fanned cards as the Last Card cover art
+[{c:'red',v:'7'},{c:'sun',v:'skip'},{c:'wild',v:'wild'},{c:'sky',v:'4'}].forEach((c,i)=>{
+  const el=cardEl(c);
+  el.style.position='absolute';
+  el.style.setProperty('--cw','64px');
+  el.style.transform=`rotate(${-17+i*11}deg) translate(${(i-1.5)*32}px, ${Math.abs(i-1.5)*8}px)`;
+  $('#artLastCard').appendChild(el);
+});
+// small stack next to the chosen game in the lobby
+[{c:'red',v:'7'},{c:'sky',v:'4'}].forEach((c,i)=>{
+  const el=cardEl(c); el.style.left=(i*8)+'px'; el.style.top=(i*4)+'px';
+  $('#cgArt').appendChild(el);
+});
+// clicking anywhere on an unfinished game explains itself
+document.querySelector('.gcard.soon').onclick=()=>toast('Snakes & Ladders isn’t built yet. Last Card is ready to play.');
+
 for(let i=0;i<16;i++) $('#meter').appendChild(document.createElement('i'));
 $('#micTest').onclick=()=>{
   const m=$('#meter'); m.classList.add('on'); $('#micNote').textContent='Say something…';

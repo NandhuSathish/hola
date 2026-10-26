@@ -6,9 +6,15 @@ The detailed spec behind `CLAUDE.md`: what to build, how the pieces talk, and wh
 
 ## 1. Product in one paragraph
 
-A friend opens holla!, picks a name and avatar, taps **Create a room**, and shares a 4-letter code or link.
-Up to 15 friends join from phones or laptops, talk over built-in voice, and play **Last Card** (Uno-style).
+A friend opens holla!, picks a name and builds a fighter, taps **Create a room**, chooses a game, and shares a 4-letter code or link.
+Up to 15 friends join from phones or laptops and play **Last Card** (Uno-style), **Snakes & Ladders** or **Hand Cricket**.
+Built-in voice arrives in v2; until then people keep a call open alongside.
 After each round there's a results screen, then another deal. No sign-up, nothing to install.
+
+**Screen flow:** Home → Pick a game → Lobby → Table → Results, with Results looping back to
+Table ("Deal another round") or Lobby. The host can return to the picker from the lobby at any
+time before the deal. Players who join by code or link land straight in the lobby — the host
+already chose the game.
 
 ---
 
@@ -42,7 +48,9 @@ export interface GameModule<State, Action, View, Settings> {
   maxPlayers: number;            // 15
   defaultSettings: Settings;
 
-  setup(players: PlayerRef[], settings: Settings, rng: () => number): State;
+  // ctx carries now as well as rng: a turn timer needs a start time, and the
+  // engine may not read the clock itself.
+  setup(players: PlayerRef[], settings: Settings, ctx: { now: number; rng: () => number }): State;
 
   // Validate + apply. Return an error string instead of throwing for illegal moves.
   onAction(state: State, playerId: string, action: Action, ctx: { now: number; rng: () => number })
@@ -58,7 +66,7 @@ export interface GameModule<State, Action, View, Settings> {
   onPlayerLeft(state: State, playerId: string): State;    // keep the game going
 }
 
-type PlayerRef  = { id: string; name: string; avatar: string };
+type PlayerRef  = { id: string; name: string; look: Look };
 type GameEvent  = { kind: string; text: string; playerId?: string };  // feeds the log + toasts
 type RoundResult = { winnerId: string; scores: { playerId: string; cardsLeft: number; points: number }[] };
 ```
@@ -69,7 +77,36 @@ The client side of a game is a React component in `client/src/games/<id>/`:
 type GameUIProps<View, Action> = { view: View; me: string; players: PlayerRef[]; send: (a: Action) => void };
 ```
 
-Registry (`shared/src/games/index.ts` and `client/src/games/index.ts`) maps `id → module / component`. The core only uses the registry.
+### Catalogue vs modules
+
+The **Pick a game** screen has to list games that are not built yet ("Coming soon"), which by
+definition have no `GameModule`. So display metadata is separate from implementation:
+
+```ts
+export type GameInfo = {
+  id: string;                 // 'last-card', 'snakes-ladders'
+  name: string;               // 'Last Card'
+  tagline: string;            // one line for the game card
+  minPlayers: number; maxPlayers: number;
+  estimate: string;           // '~10 min a round'
+  status: 'ready' | 'soon';   // 'soon' entries have no module and cannot be started
+};
+```
+
+Registry (`shared/src/games/index.ts` and `client/src/games/index.ts`) exports:
+
+- `catalogue: GameInfo[]` — everything the picker shows, ready or not.
+- `modules: Record<string, GameModule>` — only `status: 'ready'` ids appear here.
+
+The server rejects `room:setGame` / `game:start` for any id that is not in `modules`, so a
+"coming soon" card can never start a round even if a client fakes the event. The core still
+only talks to the `GameModule` interface — `catalogue` is presentation data, nothing more.
+
+### Lobby settings come from the game
+
+The lobby's **House rules** panel is game-specific (stacking and 7-0 mean nothing to Snakes &
+Ladders). Each game owns its settings UI in `client/src/games/<id>/Settings.tsx`; the lobby
+renders whichever one matches `room.gameId` and never hardcodes Last Card's rules.
 
 ---
 
@@ -119,8 +156,15 @@ Wild Draw 4 can be played any time (no challenge rule in v1).
 
 ### Ending a round and scoring
 - The round ends when a player plays their last card (the final card's effect still applies, e.g. the next player draws 2, for display only).
-- Winner scores the value of everyone else's cards: number cards = face value, Skip/Reverse/Draw 2 = 20, Wild/Wild Draw 4 = 50.
-- Running totals are kept on the room across rounds until the host returns to the lobby with "Reset scores".
+- Card values: number cards = face value, Skip/Reverse/Draw 2 = 20, Wild/Wild Draw 4 = 50.
+- **Winner takes all.** The winner scores the summed value of every other player's remaining cards. Everyone else scores **0** for the round.
+- In `RoundResult.scores`, `cardsLeft` and `points` are reported for every player: `points` is what that player *gained this round*, so it is the full total for the winner and `0` for everyone else. `cardsLeft` is their hand size, shown on the results screen.
+- Running totals are kept on the room across rounds until the host resets them (`game:next` with `mode: 'reset'`). Higher is better; there is no target score in v1.
+
+### Draw pile edge cases
+- If a pending stack total exceeds the cards available (draw pile + reshuffled discard), the player draws as many as exist and the stack is cleared. The round continues.
+- When the flipped start card is not a number card, it is inserted back at a **random position** in the draw pile (using the injected `rng`) and the next card is flipped. This keeps `setup` deterministic for a given seed.
+- Playing a 7 with `swapWith` set to your own id is an illegal move (`ok: false`).
 
 ### Players leaving mid-game
 - Disconnected players keep their seat for 60s; their turns are auto-passed (draw 1) while away.
@@ -132,25 +176,37 @@ Wild Draw 4 can be played any time (no challenge rule in v1).
 ## 5. Rooms and sessions
 
 - **Room code:** 4 letters from `ABCDEFGHJKLMNPQRSTUVWXYZ` (no I, O). Case-insensitive input.
-- **Player identity:** server issues `{ playerId, secret }` on create/join. Client stores it in `localStorage` per room code.
+- **Player identity:** server issues `{ playerId, secret }` on create/join.
+- **Where it is stored:** the seat lives in `sessionStorage` per room code, the profile (name, fighter) in `localStorage`. sessionStorage is per browser tab, so it still survives a refresh, a crash and a dropped connection — which is all the 60s grace window needs — while letting two tabs be two players. With localStorage every tab on a device would silently share one seat, which would stop friends sharing a laptop and make the "three tabs stay in sync" test impossible.
 - **Rejoin:** on reconnect the client sends `room:rejoin` with the stored pair. Matching secret → same seat.
-- **Limits:** 15 players max. Names 1–14 chars, trimmed, unique within the room (append a digit if taken).
+- **Limits:** 15 players max. Names 1–14 chars, trimmed, unique within the room (append a digit if taken). The join/create ack returns only `{ code, playerId, secret }`; the client reads its final (possibly de-duplicated) name from the `room:state` that follows, matching on `playerId`.
+- **Fighters:** there is no emoji avatar. You are a little boxer, described by three numbers — `{ style, skin, hair }` — exactly as both mocks store them under `holla-fighter`. 8 head styles (cap, beanie, spiky, bun, headband, curls, mohawk, bunny hood), 5 skin tones, 6 hair colours. The same figure is your head in every seat list and your token on the Snakes & Ladders board, and Hand Cricket draws it too. Jersey colour comes from seat order, not from the look, so a full table stays tellable apart however people style themselves. Unique within a room where possible: a style+hair pair someone already wears is quietly restyled on join, but skin tone is never reassigned. Every index is clamped on the way in, because an out-of-range one would throw inside the renderer on every frame.
 - **Host:** creator. If host disconnects for more than 60s or leaves, the longest-present player becomes host.
 - **Cleanup:** a room with no connected players is deleted after 10 minutes.
 
 ### Room shape (server)
+
+The core is game-agnostic (CLAUDE.md rule 4): `gameId` is a plain string looked up in the
+registry, and `settings` / `game` are opaque to the server. Only the module interprets them.
+
 ```ts
 type Room = {
   code: string;
   hostId: string;
-  players: { id: string; secret: string; name: string; avatar: string; connected: boolean; joinedAt: number; lastSeen: number }[];
+  players: {
+    id: string; secret: string; name: string; look: Look;
+    connected: boolean; joinedAt: number; lastSeen: number;
+    spectator: boolean;            // true = watching only, seated next round
+  }[];
   phase: 'lobby' | 'playing' | 'results';
-  gameId: 'last-card';
-  settings: LastCardSettings;
+  gameId: string;                  // registry key, never a literal union
+  settings: unknown;               // the active module's Settings
   game: unknown | null;            // the active module's State
   totals: Record<string, number>;  // scores across rounds
 };
 ```
+
+- **Spectators:** a player removed mid-round (gone > 60s) comes back with `spectator: true`. They receive `getSpectatorView` instead of `getPlayerView`, cannot send `game:action`, and are cleared to `false` when the next round is dealt.
 
 ---
 
@@ -161,24 +217,34 @@ All payloads are typed in `shared/src/events.ts`. Client → server events use a
 ### Client → server
 | Event | Payload | Ack |
 |---|---|---|
-| `room:create` | `{ name, avatar }` | `{ code, playerId, secret }` |
-| `room:join` | `{ code, name, avatar }` | `{ code, playerId, secret }` |
+| `room:create` | `{ name, look, gameId }` | `{ code, playerId, secret }` |
+| `room:join` | `{ code, name, look }` | `{ code, playerId, secret }` |
+| `room:look` | `{ look }` | `{ ok }` — lobby only |
+| `room:setGame` | `{ gameId }` (host only, lobby only, must be a `ready` game) | `{ ok } \| { error }` |
 | `room:rejoin` | `{ code, playerId, secret }` | `{ ok }` |
 | `room:leave` | `{}` | `{ ok }` |
 | `room:settings` | `Partial<Settings>` (host only, lobby only) | `{ ok }` |
 | `game:start` | `{}` (host only, ≥ 2 players) | `{ ok }` |
 | `game:action` | game-specific `Action` | `{ ok } \| { error }` |
-| `game:next` | `{ mode: 'again' \| 'lobby' }` (host only, results phase) | `{ ok }` |
+| `game:next` | `{ mode: 'again' \| 'lobby' \| 'reset' }` (host only, results phase). `reset` clears `totals` and returns to the lobby | `{ ok }` |
 | `fx:react` | `{ emoji }` (whitelisted, max 1 per second per player) | — |
 
 ### Server → client
 | Event | Payload | When |
 |---|---|---|
 | `room:state` | lobby view: code, hostId, players (no secrets), phase, settings, totals | any room change |
-| `game:view` | this player's `View` | after every accepted action / tick |
+| `game:view` | this player's `View` | after every accepted action, on a fired turn timeout, and immediately after a successful `room:rejoin` / mid-game join so a refreshed client is never left with a blank table |
 | `game:events` | `GameEvent[]` | after actions (log + toasts) |
 | `game:result` | `RoundResult` + totals | round end |
 | `fx:react` | `{ playerId, emoji }` | someone reacted |
+
+**Ticks are not broadcasts.** The runner calls `onTick` on a short interval, but only emits
+`game:view` when the tick actually changed state (a turn timed out). The countdown itself is
+rendered client-side from `turnEndsAt`, so an idle turn costs no traffic.
+
+**Rejoin is ours, not Socket.io's.** We do not enable Socket.io connection state recovery —
+identity is re-established by `room:rejoin` with `{ playerId, secret }`. Running both would
+give two competing notions of "the same player".
 
 ### Last Card actions
 ```ts
@@ -206,7 +272,11 @@ type Card = { id: string; color: Color | 'wild'; value: '0'|'1'|'2'|'3'|'4'|'5'|
 
 ---
 
-## 7. Voice flow (LiveKit)
+## 7. Voice flow (LiveKit) — v2, not in v1
+
+> Held back from v1 deliberately: it needs HTTPS and two devices on separate
+> networks to test, and LiveKit's free allowance is roughly one and a half
+> game nights for a full room. The spec below still stands for when it lands.
 
 1. Player is in a room. Voice is off until they tap **Join voice** (browsers block audio and mic without a tap, especially iOS Safari).
 2. Client calls `POST /api/voice-token` with `{ code, playerId, secret }`.
@@ -215,6 +285,7 @@ type Card = { id: string; color: Color | 'wild'; value: '0'|'1'|'2'|'3'|'4'|'5'|
 5. Speaking rings: listen to `RoomEvent.ActiveSpeakersChanged`; map participant identity → playerId.
 6. Mute badges: track muted / unmuted events per participant.
 7. Push-to-talk: keep the mic track published, mute it by default, unmute while the button / Space is held.
+   **Space collides with the browser default** of activating a focused button, so holding Space to talk while a card has focus would also play that card. The PTT handler listens on `document`, calls `preventDefault()` on `keydown`/`keyup` for Space, and cards are therefore played with **Enter only**. Ignore the Space binding while focus is in a text input.
 8. "Mute everyone": set each remote participant's audio volume to 0 (local only).
 9. Leaving the room or the tab → `room.disconnect()`.
 
@@ -241,6 +312,7 @@ Free plan note: LiveKit Cloud's free Build plan has a monthly allowance of parti
 - **Buttons:** Lilita One, 3px border, 4px offset shadow, press = translate 3px and shrink shadow.
 - **Cards:** colour face with diagonal stripes, cream circle with the value, corner values, and a corner shape per colour (red ◆, yellow ●, green ▲, blue ■) for colour-blind players. Wild = 4-colour pinwheel.
 - **Card back:** `--line` with a dot grid and a pink "h!" badge.
+- **Game cards (picker):** sticker panel, cover art panel on `--ink-3` with the dot grid, status pill top-right (`--mint` "Ready" / `--paper-2` "Coming soon"), meta chips on `--paper-2`, full-width action button. Unbuilt games are desaturated and their button is disabled. A dashed "More games on the way" tile closes the grid so the list never looks finished.
 - **Speaking:** pulsing `--mint` ring around the avatar. **Turn:** `--sun` conic timer ring + yellow name pill.
 - **Copy:** sentence case, plain verbs ("Create a room", "Deal another round"). No ALL CAPS labels.
 - **Motion:** card fly-to-pile, pop on new top card, "Last card!" stamp, confetti on results. All off under `prefers-reduced-motion`.
@@ -270,7 +342,7 @@ In dev, Vite proxies `/api` and `/socket.io` to the server so the client always 
 - Three tabs: create, join, refresh mid-lobby, refresh mid-game, close one tab for 30s and come back.
 - Phone (real device) on mobile data + laptop on Wi-Fi: voice both ways, speaking rings, push-to-talk.
 - 390×844 and 1440×900: nothing overlaps, hand is fully visible above the voice bar.
-- Keyboard: tab through cards, Enter plays, Space push-to-talk.
+- Keyboard: tab through cards, **Enter plays** (not Space — Space is push-to-talk and is prevented from activating focused buttons), Space push-to-talk.
 - Reduced motion on: game still fully playable.
 - Mic access only works on HTTPS or `localhost`. To test a phone against your laptop, use the deployed URL or a tunnel (for example `cloudflared tunnel --url http://localhost:5173`).
 

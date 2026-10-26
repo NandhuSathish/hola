@@ -1,0 +1,272 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  Ack,
+  AckWith,
+  GameEvent,
+  LastCardView,
+  Look,
+  Reaction,
+  RoomView,
+  RoundResult,
+  Seat,
+} from '@holla/shared';
+import { socket, type ConnectionState } from './socket';
+import { clearSeat, loadSeat, saveSeat, type Profile } from './session';
+import { gamesPath, navigate, roomPath } from './route';
+
+type State = {
+  connection: ConnectionState;
+  room: RoomView | null;
+  me: string | null;
+  error: string | null;
+  busy: boolean;
+  /** This player's own view of the round, or null outside one. */
+  game: LastCardView | null;
+  /** Most recent first, trimmed — the table only shows a few. */
+  log: GameEvent[];
+  /** Counts batches, so repeating the same event still reads as new. */
+  logSeq: number;
+  result: { result: RoundResult; totals: Record<string, number> } | null;
+  /**
+   * Reactions in flight. They are thrown away as each one finishes rather
+   * than accumulating — nobody scrolls back through emoji.
+   */
+  reactions: { playerId: string; emoji: Reaction; id: number }[];
+};
+
+export function useRoom(codeFromUrl: string | null) {
+  const [state, setState] = useState<State>({
+    connection: socket.connected ? 'connected' : 'connecting',
+    room: null,
+    me: loadSeat(codeFromUrl ?? '')?.playerId ?? null,
+    error: null,
+    busy: false,
+    game: null,
+    log: [],
+    reactions: [],
+    logSeq: 0,
+    result: null,
+  });
+
+  // Kept in a ref so the socket handlers below always see the current code
+  // without needing to be torn down and re-attached on every change.
+  const codeRef = useRef<string | null>(codeFromUrl);
+  codeRef.current = codeFromUrl;
+
+  const patch = useCallback((next: Partial<State>) => {
+    setState((prev) => ({ ...prev, ...next }));
+  }, []);
+
+  /**
+   * Identity is ours, not Socket.io's: whenever the transport comes back we
+   * re-present playerId + secret and the server hands the same seat back.
+   */
+  const rejoin = useCallback(() => {
+    const code = codeRef.current;
+    if (!code) return;
+    const seat = loadSeat(code);
+    if (!seat) return;
+
+    socket.emit('room:rejoin', seat, (res: Ack) => {
+      if (res.ok) {
+        patch({ me: seat.playerId, error: null });
+      } else {
+        clearSeat(code);
+        patch({ me: null, room: null, error: res.error });
+      }
+    });
+  }, [patch]);
+
+  useEffect(() => {
+    const onConnect = () => {
+      patch({ connection: 'connected' });
+      rejoin();
+    };
+    const onDisconnect = () => patch({ connection: 'disconnected' });
+    const onState = (view: RoomView) => {
+      // Leaving a round behind clears what belonged to it.
+      setState((prev) => ({
+        ...prev,
+        room: view,
+        error: null,
+        ...(view.phase === 'lobby' ? { game: null, log: [], result: null } : {}),
+      }));
+    };
+    const onView = (view: unknown) => patch({ game: view as LastCardView });
+    const onReaction = (payload: { playerId: string; emoji: Reaction; id: number }) =>
+      // Capped: a room of fifteen all leaning on a button should not be able
+      // to pile up more than the screen can show at once.
+      setState((prev) => ({ ...prev, reactions: [...prev.reactions, payload].slice(-24) }));
+
+    const onEvents = (events: GameEvent[]) =>
+      setState((prev) => ({
+        ...prev,
+        log: [...events].reverse().concat(prev.log).slice(0, 6),
+        logSeq: prev.logSeq + 1,
+      }));
+    const onResult = (payload: { result: RoundResult; totals: Record<string, number> }) =>
+      patch({ result: payload });
+    const onClosed = (payload: { reason: string }) => {
+      const code = codeRef.current;
+      if (code) clearSeat(code);
+      patch({ room: null, me: null, error: payload.reason });
+      navigate('/');
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('room:state', onState);
+    socket.on('room:closed', onClosed);
+    socket.on('game:view', onView);
+    socket.on('game:events', onEvents);
+    socket.on('room:reaction', onReaction);
+    socket.on('game:result', onResult);
+
+    if (socket.connected) rejoin();
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('room:state', onState);
+      socket.off('room:closed', onClosed);
+      socket.off('game:view', onView);
+      socket.off('game:events', onEvents);
+      socket.off('room:reaction', onReaction);
+      socket.off('game:result', onResult);
+    };
+  }, [patch, rejoin]);
+
+  // Landing on /r/CODE in a fresh tab: try the stored seat for that room.
+  useEffect(() => {
+    if (codeFromUrl && socket.connected) rejoin();
+  }, [codeFromUrl, rejoin]);
+
+  const createRoom = useCallback(
+    (profile: Profile, gameId = '') => {
+      patch({ busy: true, error: null });
+      socket.emit(
+        'room:create',
+        { ...profile, gameId },
+        (res: AckWith<Seat>) => {
+          if (!res.ok) {
+            patch({ busy: false, error: res.error });
+            return;
+          }
+          saveSeat(res);
+          patch({ busy: false, me: res.playerId });
+          // Straight to the picker when nobody has chosen yet, so the room
+          // exists but the game is still the table's to decide.
+          navigate(gameId ? roomPath(res.code) : gamesPath(res.code));
+        },
+      );
+    },
+    [patch],
+  );
+
+  const joinRoom = useCallback(
+    (code: string, profile: Profile) => {
+      patch({ busy: true, error: null });
+      socket.emit('room:join', { code, ...profile }, (res: AckWith<Seat>) => {
+        if (!res.ok) {
+          patch({ busy: false, error: res.error });
+          return;
+        }
+        saveSeat(res);
+        patch({ busy: false, me: res.playerId });
+        navigate(roomPath(res.code));
+      });
+    },
+    [patch],
+  );
+
+  /** Restyle in the lobby. Everyone sees it on the next room:state. */
+  const setLook = useCallback(
+    (look: Look) => {
+      patch({ error: null });
+      socket.emit('room:look', { look }, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+      });
+    },
+    [patch],
+  );
+
+  const react = useCallback((emoji: Reaction) => {
+    socket.emit('room:react', { emoji });
+  }, []);
+
+  /** Dropped by the floating layer once a reaction has finished its flight. */
+  const clearReaction = useCallback((id: number) => {
+    setState((prev) => ({ ...prev, reactions: prev.reactions.filter((r) => r.id !== id) }));
+  }, []);
+
+  const setGame = useCallback(
+    (gameId: string) => {
+      patch({ error: null });
+      socket.emit('room:setGame', { gameId }, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+        else navigate(roomPath(codeRef.current ?? ''));
+      });
+    },
+    [patch],
+  );
+
+  const updateSettings = useCallback(
+    (settingsPatch: Record<string, unknown>) => {
+      socket.emit('room:settings', settingsPatch, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+      });
+    },
+    [patch],
+  );
+
+  const startGame = useCallback(() => {
+    patch({ error: null });
+    socket.emit('game:start', (res: Ack) => {
+      if (!res.ok) patch({ error: res.error });
+    });
+  }, [patch]);
+
+  /** A refused move is ordinary play, so it only shows a message. */
+  const sendAction = useCallback(
+    (action: unknown) => {
+      socket.emit('game:action', action, (res: Ack) => {
+        patch({ error: res.ok ? null : res.error });
+      });
+    },
+    [patch],
+  );
+
+  const nextRound = useCallback(
+    (mode: 'again' | 'lobby' | 'reset') => {
+      patch({ error: null });
+      socket.emit('game:next', { mode }, (res: Ack) => {
+        if (!res.ok) patch({ error: res.error });
+      });
+    },
+    [patch],
+  );
+
+  const leaveRoom = useCallback(() => {
+    const code = codeRef.current;
+    socket.emit('room:leave', () => {
+      if (code) clearSeat(code);
+      patch({ room: null, me: null, error: null });
+      navigate('/');
+    });
+  }, [patch]);
+
+  return {
+    ...state,
+    createRoom,
+    joinRoom,
+    setGame,
+    setLook,
+    react,
+    clearReaction,
+    updateSettings,
+    startGame,
+    sendAction,
+    nextRound,
+    leaveRoom,
+  };
+}
